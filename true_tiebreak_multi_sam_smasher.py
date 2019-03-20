@@ -36,42 +36,40 @@ KRAKEN_LOC = '/tools/krakenuniq/krakenuniq-report'
 #KRAKEN_DB_LOC = '/hd2/krakenuniq_all/krakenuniq_all2/all/'
 KRAKEN_DB_LOC = '/hd2/kraktest/'
 
-# takes a list of the form[[taxids,edit distance],[taxid,edit distance],[ect]] and breaks ties
-# until it is no longer 'no rank' then the intersection of all votes is taken 
-# and the LCA is called, if the read ever aligned to human returns human 
+# takes a list of the form[[taxid,edit distance],[taxid,edit distance],[ect]] and breaks ties
+# returning a single taxid
 def tie_break(taxid_list):
 	list_of_lineages = []
 	list_of_assignments = []
 	actual_taxid_list = []
 	score_list = []
 	
-	# taxid list is a list of tuples so we go through and put all the edit distances into a list
+	# taxid list is a list of tuples so we go through and put all the edit distances into a new list
 	for id in taxid_list:
 		score_list.append(id[1])
 	
-	# then we figure out the 'best' edit distance 
+	# then we figure out the 'best' edit distance. Edit distances are like golf, lower is better
+	# except for negative numbers, which is why any edit distance that's negative gets moved to +100 
+	# before passing into this function
 	id_max = min(score_list)
 	
-	# create a new list of taxids only holding hits with the best edit distance or one greater
-	# edit distances are like golf scores where lower is better
+	# create a new list of taxids only holding taxids with the best edit distance or one greater
 	for id in taxid_list:
 		if id[1] <= id_max + 1:
 			actual_taxid_list.append(id[0])
 	
-	# then overwrite the original variable 
+	# then overwrite the original variable with just a list of good taxids, taxid_list is now [taxid,taxid,taxid]
 	taxid_list = actual_taxid_list
 	# if the read ever aligned to human just call it human and move on
 	if '9606' in taxid_list:
 		return 9606
-	
-	# this will let us know if the list is entirely '*', which means the read is unassigned
+
 	is_read_unassigned = True 
+	# go through every taxid that got assigned to the current read 
 	for id in taxid_list:
-		# this check both allows us to detect unassigned reads as well as protect code from 
-		# 'taxids' that aren't ncbi valid
+		# only attempt to call lineage on hits that aligned to something 
 		if id != '*':
-			is_read_unassigned = False
-			# create a list containing the NCBI tax lineage
+			# get list of NCBI taxonomy lineage for the taxid 
 			try:
 				lineage = ncbi.get_lineage(id)
 			except:
@@ -83,23 +81,30 @@ def tie_break(taxid_list):
 					lineage.pop(x)
 				else:
 					break
-
+			
+			# if we either couldn't get an NCBI linage or removed all nodes 
+			# call this taxid unassigned 
 			if len(lineage) == 0:
 				list_of_assignments.append('*')
 				
 			else:
-			# store complete lineage with 'no ranks' removed
+				# if we got an assignment, change boolean flag to note that we have at least one
+				# good tax assignment for this read 
+				is_read_unassigned = False
+				# store complete lineage with 'no ranks' removed
 				list_of_lineages.append(lineage)
-			# store the exact assignment 
+				# store the exact assignment - we only append to the linage list if the taxid is valid
 				list_of_assignments.append(lineage[-1])
 	
 	# if we never saw a taxid other than '*' we'll return this and handle it later
 	if is_read_unassigned:
 		return '*'
+	# make sure that we have a list with only valid ranked NCBI taxonomies 
 	for thing in list_of_assignments:
 		if thing == '*':
 			list_of_assignments.remove('*')
-			
+	
+	# all these checks are probably redundant but they don't destroy data and don't take any extra time 
 	if len(list_of_assignments) == 0:
 		return '*'
 	
@@ -111,10 +116,8 @@ def tie_break(taxid_list):
 	# if we only have two hits just intersect them - this won't change anything if the assignments
 	# are the same and if they're different it'll place them correctly
 	total_counts = len(list_of_assignments)
-	if (most_common_id_count <= total_counts - (total_counts / 10)) or total_counts == 2:
-	#
-	#if most_common_id_count < total_counts or len(list_of_assignments) == 2:
-		# intersect 
+	if most_common_id_count <= total_counts - (total_counts / 10):
+
 		lineage_intersect = set.intersection(*map(set,list_of_lineages))
 		
 		# pull taxid with the longest lineage this is just because the we converted the list into a set which un-orders it
@@ -127,11 +130,10 @@ def tie_break(taxid_list):
 		assigned_hit = max(d.iteritems(), key=operator.itemgetter(1))[0]
 		return assigned_hit
 		
-	# if we don't have more than one vote against the most common tax assignment just assign the read to the most common taxid 
+	# if we didn't do an intersection just return the most common taxid 
 	else: 
 		return max(set(list_of_assignments), key=list_of_assignments.count)
 
-	
 	
 # use the krakenunique report function on a full ncbi taxdmp to actually include EVERY taxid in the report 
 # this lets us assign reads directly to any species that's in NCBI taxonomy 
@@ -142,6 +144,7 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 	
 	# initialize with the number of unassigned, we'll need to add human host filtering in earlier
 	# because some reads will get tie broken to human 
+	
 	l.write('0\t' + str(num_unassigned))
 	# write the rest of the taxids to the file
 	for key in final_counts_map.keys():
@@ -157,7 +160,6 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 	 
 if __name__ == '__main__':
 	# generate a list of all the sam files 
-	# TODO: pass the base as an argument so we can asynchronously 
 	file_list = glob.glob('*.sam')
 	base_col = set()
 	main_start_time = timeit.default_timer()
@@ -180,9 +182,6 @@ if __name__ == '__main__':
 			for line in open(file_name):
 				line_count += 1
 				if line_count > 3:
-					# this is slow but allows me to keep changing the header size
-					# once we've got a finalized header size i'd like to change this to a numerical
-					# operation i.e. we know the sam header is 200 lines so just ignore the first 200 lines
 
 					line_list = line.split('\t')
 					current_read = line_list[0]
