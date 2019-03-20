@@ -15,7 +15,7 @@
 
 
 # put four python calls into a shell script so I can type about 20 less characters each execution 
-python trim_shell.py
-python host_filter.py
-python multi_snap_shell.py
-python true_tiebreak_multi_sam_smasher.py
+python /tools/CLOMP/trim_shell.py
+python /tools/CLOMP/host_filter.py
+python /tools/CLOMP/multi_snap_shell.py
+python /tools/CLOMP/true_tiebreak_multi_sam_smasher.py
