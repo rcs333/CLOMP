@@ -4,100 +4,13 @@
 
 2. [Insallation and configuration guide](#Installation)
 
+3. [Execution and run guide](#Running)
+
+4. [Technicall details and my ramblings](#Technical)
+
 Code for metagenomic classification of samples
 
 This repository describes how to set up a metagenomic classification pipeline like the cool kids at UW Virology. We can go from a bunch of fastq files in a folder to a sweet metagenomic classification report in about 6 hours for 25 million reads (about a MiSeq run). 
-
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-aa
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-
-a
-a
-a
-
-
 
 
 # Installation
@@ -166,6 +79,6 @@ Then finally just run
 `python trim_host.py; python host_filter.py; python snap_shell.py; python tie_break.py`
 This assumes that you want to host trim then host filter and that all your files are in a folder with the extension .fastq. This can all be tweaked by changing the wildcard expressions in the opening for loops. Additionally, if you created more than 14 SNAP databases you'll have to modify the loops. 
 
-# Actually Running this
+# Running
 
-# Description of process (for people who might not be HUGE nerds)
+# Technical 
