@@ -9,6 +9,52 @@ Code for metagenomic classification of samples
 This repository describes how to set up a metagenomic classification pipeline like the cool kids at UW Virology. We can go from a bunch of fastq files in a folder to a sweet metagenomic classification report in about 6 hours for 25 million reads (about a MiSeq run). 
 
 
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+aa
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+a
+
 
 
 
