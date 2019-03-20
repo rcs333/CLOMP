@@ -15,6 +15,9 @@
 
 
 # put four python calls into a shell script so I can type about 20 less characters each execution 
+echo 'Unzipping fastq.gz files (if any)'
+gunzip *.gz 
+echo 'Done unzipping' 
 python /tools/CLOMP/trim_shell.py
 python /tools/CLOMP/host_filter.py
 python /tools/CLOMP/multi_snap_shell.py
