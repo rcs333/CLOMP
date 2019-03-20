@@ -2,7 +2,7 @@
 ### Table of Contents
 1. This Introduction and general description 
 
-2. [Insallation and configuration guide](#Install-for-yourself!)
+2. [Insallation and configuration guide](#Installation)
 
 Code for metagenomic classification of samples
 
@@ -100,7 +100,7 @@ a
 
 
 
-# Install for yourself!
+# Installation
 ## System Specs
 Linux OS (This can theoretically work on a Mac but do yourself a favor and don't)
 
