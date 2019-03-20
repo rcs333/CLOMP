@@ -1,6 +1,9 @@
-# General Description (For people who might not be HUGE nerds)
+# CLOMP - CLinically Okay Metagenomic Pipeline
+
+A entirely open source, fast, accurate and highly configurable end to end metagenomics pipeline for the people.
+
 ### Table of Contents
-1. This Introduction and general description 
+1. [This Introduction and general description](#Introduction)
 
 2. [Insallation and configuration guide](#Installation)
 
@@ -8,9 +11,7 @@
 
 4. [Technicall details and my ramblings](#Technical)
 
-Code for metagenomic classification of samples
-
-This repository describes how to set up a metagenomic classification pipeline like the cool kids at UW Virology. We can go from a bunch of fastq files in a folder to a sweet metagenomic classification report in about 6 hours for 25 million reads (about a MiSeq run). 
+# Introduction
 
 
 # Installation
