@@ -3,14 +3,15 @@ Code for metagenomic classification of samples
 
 This repository describes how to set up a metagenomic classification pipeline like the cool kids at UW Virology. We can go from a bunch of fastq files in a folder to a sweet metagenomic classification report in about 6 hours for 25 million reads (about a MiSeq run). 
 
-# System Specs
+# Install for yourself!
+## System Specs
 Linux OS (This can theoretically work on a Mac but do yourself a favor and don't)
 
 ~3Tb of hard drive space. This can be on discontinous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
 
 As much RAM as you can get. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to sucesfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
 
-# Installation and setup
+## Installation and setup
 The installation of my scripts is as simple as copying them to your computer - functionally all they are is wrappers for other programs. The first and hardest step of this will be configuring and setting up all the other programs and their associated databases. Once that's done all you have to do is change my scripts to point to your local database and tool locations. This guide tries as hard as possible to make this process accessible but you will be immensely helped if you can set up and run bowtie2, snap, and Trimmomatic on your own without problems. However, once you've got all the dependencies installed correctly pretty much all you have to do is change a few lines of code to point to these and then you'll be good to go. 
 
 ### Dependencies
