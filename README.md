@@ -34,7 +34,7 @@ Finally we give each read one taxonomical assignment. Again think of this as man
 
 # Installation
 ## Required System Specs
-Linux OS (This can theoretically work on a Mac but do yourself a favor and don't)
+Linux OS (This can theoretically work on a Mac but **do yourself a favor and don't**)
 
 ~3Tb of hard drive space. This can be on discontinous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
 
@@ -94,8 +94,8 @@ Once your database is built you'll also need to modify multi_snap_shell.py. If y
 #### approximate time quick 
 The tiebreaking code requires some parts of a krakenuniq tiebreaker. You need a seqid2taxid and a taxDB file, the best way to do this is to use the provided scripts on the github and then just point to that folder. You also need a database.idx and database.kdb file but these can be empyt. Once you've got that setup up make sure tie_break.py points to the right places. Lines 17 and 18 need to point to your krakenuniq-report script and the database respectivey.
 
-Then finally just run
-`python trim_host.py; python host_filter.py; python snap_shell.py; python tie_break.py`
+You also will want to configure the main CLOMP.sh script. For this change the hard coded paths in this file to point to the place where you downloaded this repository. Then you can add CLOMP.sh to your PATH variable. To do this for all users `sudo nano /etc/enviornment` Then add ':/path/to/CLOMP_folder' to the end of the PATH line. Then save this file and re log in and all users will be able to clomp away by navigating to the folder which has their fastq files in the terminal and typing `CLOMP.sh`.
+
 This assumes that you want to host trim then host filter and that all your files are in a folder with the extension .fastq. This can all be tweaked by changing the wildcard expressions in the opening for loops. Additionally, if you created more than 14 SNAP databases you'll have to modify the loops. 
 
 # Running
