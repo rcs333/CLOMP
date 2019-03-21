@@ -72,6 +72,10 @@ def tie_break(taxid_list):
 			# get list of NCBI taxonomy lineage for the taxid 
 			try:
 				lineage = ncbi.get_lineage(id)
+				# if the taxid comes from either 'unclassified sequences' or 'other sequences' 
+				# we'll not count that assignment 
+				if (12908 in lineage) or (28384 in lineage):
+					lineage = []
 			except:
 				lineage = []
 			# walk backwards through the taxonomically lineage and remove leaves until 
@@ -103,8 +107,7 @@ def tie_break(taxid_list):
 	for thing in list_of_assignments:
 		if thing == '*':
 			list_of_assignments.remove('*')
-	
-	# all these checks are probably redundant but they don't destroy data and don't take any extra time 
+
 	if len(list_of_assignments) == 0:
 		return '*'
 	
@@ -135,7 +138,7 @@ def tie_break(taxid_list):
 		return max(set(list_of_assignments), key=list_of_assignments.count)
 
 	
-# use the krakenunique report function on a full ncbi taxdmp to actually include EVERY taxid in the report 
+# use the krakenuniqu report function on a full ncbi taxdmp to actually include EVERY taxid in the report 
 # this lets us assign reads directly to any species that's in NCBI taxonomy 
 def new_write_kraken(basename, final_counts_map, num_unassigned):
 	print('Preparing output for ' + basename)
@@ -190,13 +193,12 @@ if __name__ == '__main__':
 				
 					# if read was unassigned append '*' to taxid list 
 					if snap_assignment_of_current_read == '*':
+						# higher edit distance than anything else makes sure this gets parsed out 
 						current_read_taxid = [snap_assignment_of_current_read,100]
 					else:
 						current_read_taxid = [snap_assignment_of_current_read.split('#')[-1],int(line_list[12].split(':')[-1])]
-					# if read had an assignment add it to the map or to the preexisting list for the map
-
-					# if we've already added stuff for this read then append the taxid to the list for 
-					# that read
+					
+					# create a map of read_name -> [[taxid, edit distance ], [taxid, edit distance], ect..]
 					if current_read in read_to_taxids_map:
 						read_to_taxids_map[current_read].append(current_read_taxid)
 					else: 
