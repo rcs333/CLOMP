@@ -99,5 +99,25 @@ You also will want to configure the main CLOMP.sh script. For this change the ha
 This assumes that you want to host trim then host filter and that all your files are in a folder with the extension .fastq. This can all be tweaked by changing the wildcard expressions in the opening for loops. Additionally, if you created more than 14 SNAP databases you'll have to modify the loops. 
 
 # Running
+Once everything is setup you can just run CLOMP.sh from inside a folder that contains all the samples that you would like to analyze.
 
 # Technical 
+
+Adapter trimming and quality filtering is relatively self explanitory - the current build has the minimum read length set to 30. If you're doing runs with lengths any greater than that this should get increased. SNAP alignment is based off 20mers and really the read lengths should be above 50. This is also in the options for the SNAP aligner. 
+
+Host filtering is done using bowtie2 because that's the first program I tried to use for host filtering and it seems to work pretty well. I'm also currently trying to host filter against the whole genome of spirometeria entericia because it's absolute garbage.
+
+SNAP alignment uses a max edit distance of 11 and an om of 1. The default omax of 20 would potentially need to be tweaked depending on the number of databases you split into. 
+
+### Basic tiebreaking logic
+SNAP will report potentially multiple alignments for each read for each database. You'll get as many sam files as you have chunks of NT. true_tiebreak_multi_sam_smasher.py contains all the meat of tiebreaking, which is as follows:
+
+1. Aggregate all assignments for each read and only keep alignments that are the best edit distance or one worse than best edit distance
+2. Any read that ever aligned to human within one edit of the best assignment will be assigned to human.
+3. All assignments get walked up NCBI taxonomy tree untill they are not 'no rank'. ( this is actually a bit arbitrary as sometimes what we think of as distinct species are classified at different ranks on the tree. See human coronaviruses. I'm not sure why we originally implemented this but it'd be trivial to remove. 
+4. Count number of times the most common taxid is assigned to the read
+5. If 90% or greater of the assignments are to the most common taxid - assign this read to this taxid
+6. If under 90% of the assignments are to the most common taxid then perform an intersection on the NCBI taxonomy tree's of ALL remaining reads. 
+
+For the samples and sample types I've been testing this seems to strike a really good balance of accuratly placing sequencing but also not over imputing. Of course weird edge cases pop up, like synthetic herpesviruses being a discreet taxid that goes tree origin -> synthetic herpes viruses. As you can imagine the intersection of this case resulted in reads being placed at the origin of the tree of life. But the nice thing is that there aren't that many synthetic herpes viruses in the database so this case no longer gets aggregated. 
+1
