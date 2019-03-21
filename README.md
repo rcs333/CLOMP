@@ -92,9 +92,8 @@ Once your database is built you'll also need to modify multi_snap_shell.py. If y
 
 ### Configuring the tiebreaking
 #### approximate time quick 
-The tiebreaking code requires some parts of a krakenuniq tiebreaker. Either way just download and build the smallest krakenuniq database you can find and then make sure tie_break.py points to the right places. Lines 17 and 18 need to point to your krakenuniq-report script and the database respectivey.
+The tiebreaking code requires some parts of a krakenuniq tiebreaker. You need a seqid2taxid and a taxDB file, the best way to do this is to use the provided scripts on the github and then just point to that folder. You also need a database.idx and database.kdb file but these can be empyt. Once you've got that setup up make sure tie_break.py points to the right places. Lines 17 and 18 need to point to your krakenuniq-report script and the database respectivey.
 
-You also need to make sure that your python installation has ete3 installed with a another copy of NCBI's taxonomy downloaded by this program as well. 
 Then finally just run
 `python trim_host.py; python host_filter.py; python snap_shell.py; python tie_break.py`
 This assumes that you want to host trim then host filter and that all your files are in a folder with the extension .fastq. This can all be tweaked by changing the wildcard expressions in the opening for loops. Additionally, if you created more than 14 SNAP databases you'll have to modify the loops. 
