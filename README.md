@@ -30,7 +30,7 @@ After we've got good quality non-host reads we take all remaining reads and alig
 
 ### 4. Tiebreaking and visualization
 
-Finally we give each read one taxonomical assignment. Again think of this as manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have sequence that is highly conserved (like ribosomal RNA) cannot be accuratley placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the speciees from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing vizualisation tool [Pavian](https://github.com/fbreitwieser/pavian)
+Finally we give each read one taxonomical assignment. Again think of this as manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have highly conserved sequence (like ribosomal RNA) cannot be accuratley placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the speciees from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing vizualisation tool [Pavian](https://github.com/fbreitwieser/pavian)
 
 # Installation
 ## Required System Specs
@@ -53,6 +53,8 @@ The installation of my scripts is as simple as copying them to your computer - f
 
 libz `sudo apt install libz-dev`
 
+samtools `sudo apt install samtools ` 
+
 ### 1. Getting Trimmomatic set up. 
 #### Approximate time: ~5 minutes
 You can download [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) and unzip it to anywhere on your computer, you'll need to edit trim_shell.py to reflect the location of where Trimmomatic is living. So change line four to read `TRIM_LOC = '/your/path/to/trimmomatic-version.jar` Then you need to download the provided adapter file (adapter.fa) and change line 5 to read `ADAPTER_LOC = '/path/to/adapters.fa`
@@ -66,8 +68,6 @@ Next you need to download a copy of the human genome. I use human genome hg38 (f
 Next you need to index your host genome, the final index will take about 25Gb on your drive and requires about 4Gb of RAM to build. I like to concatenate all of my host genome files, this isn't actually necessary but I do it anyways. `cat GCA_000001405.27_GRCh38.p12_genomic.fna GCA_000001405.27_GRCh38.p12_rna_from_genomic.fna > hg38.fna`
 
 Then build with `bowtie2-index hg38.fa hg38` This takes about 5 hours on our server so might take considerabbly longer depending on specs. Once this completes you'll need to go edit line 5 of host_filter.py to read `DB_LOCATION = '/path/to/hg38'`
-
-Next you need to download and install samtools, I like to use package managers for this. So `sudo apt install samtools ` As a note samtools seems to relatively frequenty release updates that change the syntax so I can't garuntee that these exact commands will work everytime. 
 
 ### 3. SNAP Index to NT.
 #### Approximate time: Setup ~ 2 hours, Index build ~3 days (might be MUCH longer)
