@@ -5,11 +5,11 @@ A entirely open source, fast, accurate, multi-sample and highly configurable end
 ### Table of Contents
 1. [This Introduction and general description](#Introduction)
 
-2. [Insallation and configuration guide](#Installation)
+2. [Installation and configuration guide](#Installation)
 
 3. [Execution and run guide](#Running)
 
-4. [Technicall details and my ramblings](#Technical)
+4. [Technical details and my ramblings](#Technical)
 
 # Introduction
 
@@ -22,25 +22,25 @@ First, we take all reads and remove adapter and low quality sequences from the e
 
 ### 2. Host read subtraction
 
-Next, reads are aligned to a host geneome and thrown out. As this pipeline is designed to be 'clinically okay' and for human consuption, by default we align to the Human Genome (hg38 p.12). Depending on the sample type, this may remove almost all reads. This is great because it allows the rest of the pipeline to actually run relatively quickly. However, with very little effort you can configure CLOMP to filter out almost any host genome (as long as it's actually been sequenced). Host subtraction is performed with [bowtie2](https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.4.3)
+Next, reads are aligned to a host genome and those that match are removed from further analysis. This pipeline is primarily designed for human clinical samples so by default we align to the Human Genome (hg38 p.12). Depending on the sample type, this may remove almost all reads. This is great because it allows the rest of the pipeline to run relatively quickly. However, with very little effort you can configure CLOMP to filter out almost any host genome (as long as it's actually been sequenced). Host subtraction is performed with [bowtie2](https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.4.3)
 
 ### 3. Alignment of every read to NT
 
-After we've got good quality non-host reads we take all remaining reads and align them to NCBI's NT. This is performed with the lovely tool [SNAP](http://snap.cs.berkeley.edu/). While there are a lot of important differences between SNAP and BLAST, you can basically just think of this step as running a super fast blast search of every read against NT. The fact that we align all reads to NT allows us to accuratley place many more reads than approaches that use a smaller database. 
+After we've got good quality non-host reads we take all remaining reads and align them to NCBI's NT. This is performed with the lovely tool [SNAP](http://snap.cs.berkeley.edu/). While there are a lot of important differences between SNAP and BLAST, you can basically just think of this step as running a super fast blast search of every read against NT. The fact that we align all reads to NT allows us to accurately place many more reads than approaches that use a smaller database. 
 
 ### 4. Tiebreaking and visualization
 
-Finally we give each read one taxonomical assignment. Again think of this as manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have highly conserved sequence (like ribosomal RNA) cannot be accuratley placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the speciees from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing vizualisation tool [Pavian](https://github.com/fbreitwieser/pavian)
+Finally we give each read one taxonomical assignment. Think of this like manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have highly conserved sequence (like ribosomal RNA) cannot be accurately placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant of. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the species from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing visualization tool [Pavian](https://github.com/fbreitwieser/pavian)
 
 # Installation
 ## Required System Specs
 Linux OS (This can theoretically work on a Mac but **do yourself a favor and don't**)
 
-~3Tb of hard drive space. This can be on discontinous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
+~3Tb of hard drive space. This can be on discontinuous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
 
-Between 32 and 5000 Gigabytes of RAM. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to sucesfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
+Between 32 and 5000 Gigabytes of RAM. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to successfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
 
-An internet connection is required to do automatic alingment of results. And to download and install tools and databases.
+An internet connection is required to do automatic alignment of results. And to download and install tools and databases.
 
 ## Installation and setup
 The installation of my scripts is as simple as copying them to your computer - functionally all they are is wrappers for other programs. The first and hardest step of this will be configuring and setting up all the other programs and their associated databases. Once that's done you have to change my scripts to point to your local database and tool locations, then you need to add the main script to the PATH and you'll be good to go. This guide tries as hard as possible to make this process accessible but you will be immensely helped if you can set up and run bowtie2, snap, and Trimmomatic on your own without problems. However, once you've got all the dependencies installed correctly pretty much all you have to do is change a few lines of code to point to these and then you'll be good to go. 
@@ -67,20 +67,20 @@ First you need to download and install [bowtie2](https://sourceforge.net/project
 Next you need to download a copy of the human genome. I use human genome hg38 (ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.27_GRCh38.p12) You want to download the two files that end in `_genomic.fna.gz` and `_rna_from_genomic.fna.gz` This may take quite a while to download. Then you need to unzip these two files. If you're trying to add other organisms or sequences to you host filtering download them now. 
 Next you need to index your host genome, the final index will take about 25Gb on your drive and requires about 4Gb of RAM to build. I like to concatenate all of my host genome files, this isn't actually necessary but I do it anyways. `cat GCA_000001405.27_GRCh38.p12_genomic.fna GCA_000001405.27_GRCh38.p12_rna_from_genomic.fna > hg38.fna`
 
-Then build with `bowtie2-index hg38.fa hg38` This takes about 5 hours on our server so might take considerabbly longer depending on specs. Once this completes you'll need to go edit line 5 of host_filter.py to read `DB_LOCATION = '/path/to/hg38'`
+Then build with `bowtie2-index hg38.fa hg38` This takes about 5 hours on our server so might take considerably longer depending on specs. Once this completes you'll need to go edit line 5 of host_filter.py to read `DB_LOCATION = '/path/to/hg38'`
 
 ### 3. SNAP Index to NT.
 #### Approximate time: Setup ~ 2 hours, Index build ~3 days (might be MUCH longer)
-This is absolutely the hardest part of the whole process. We use SNAP sequence aligner to quickly map reads to all of NT. However, SNAP requires that you be able to load the ENTIRE database into RAM. The final built database for NT is a bit less than 4TB in size. We have a 244Gb RAM machine and I split NT into 14 different ~12Gb fasta files and built an index for each of these (each of these indexes is about 198Gb once built). Then we sequentially run SNAP on each of these databases to produce the final output. If you have less RAM then you'll need to make more chunks, if your RAM usage starts paging during the index build it'll probobly never finish. 
+This is absolutely the hardest part of the whole process. We use SNAP sequence aligner to quickly map reads to all of NT. However, SNAP requires that you be able to load the ENTIRE database into RAM. The final built database for NT is a bit less than 4TB in size. We have a 244Gb RAM machine and I split NT into 14 different ~12Gb fasta files and built an index for each of these (each of these indexes is about 198Gb once built). Then we sequentially run SNAP on each of these databases to produce the final output. If you have less RAM then you'll need to make more chunks, if your RAM usage starts paging during the index build it'll probably never finish. 
 
-##### If this moves to production I'm going to upload all taxid-appended chunks to the release page and then users can just download those and concat them as neccesary 
+##### If this moves to production I'm going to upload all taxid-appended chunks to the release page and then users can just download those and concatenate them as necessary 
 
 First you need to download NCBI's NT database (ftp://ftp.ncbi.nlm.nih.gov/blast/db/FASTA/) You want the one that says nt.gz
 
 I used [pyfasta](https://pypi.org/project/pyfasta/) to split the files, but it really doesn't matter how you go about it. 
-You need to split NT into however many peices you need. 14 peices load into RAM at about 200GB each but take about 220Gb to build. (Building the index takes more RAM than aligning to it). Each peice of NT takes up 14Gb of size on my computer. So if you assume that you need about (size of fasta file X 15) of RAM in order to build the database you can figure out how many peices you need to be able to fit the database into RAM. 
+You need to split NT into however many pieces you need. 14 pieces load into RAM at about 200GB each but take about 220Gb to build. (Building the index takes more RAM than aligning to it). Each piece of NT takes up 14Gb of size on my computer. So if you assume that you need about (size of fasta file X 15) of RAM in order to build the database you can figure out how many pieces you need to be able to fit the database into RAM. 
 
-Next you need to process NT. I've included parse_nt.py to allow you to do this, what this does is remove sequences less than 500nt from the database as well as append the ncbi taxid to the header of each sequence. I also currate a list of 'bad' accession numbers and prune these out. This script requires that you have a locally downloaded copy of NCBI's taxonomy (ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid) (You want the file called nucl_gb.accession2taxid.gz). My code works on fasta files that have already been split and are named like nt.fna.00 ect. You just need to make sure that nucl_gb.accesion2taxid is in the same folder as your nt files and parse_nt.py. Then run `python parse_nt.py` At this point if are short on disk space you can delete the nt.gz, nt.fna as well as the unprocessed chunks.
+Next you need to process NT. I've included parse_nt.py to allow you to do this, what this does is remove sequences less than 500nt from the database as well as append the ncbi taxid to the header of each sequence. I also curate a list of 'bad' accession numbers and prune these out. This script requires that you have a locally downloaded copy of NCBI's taxonomy (ftp://ftp.ncbi.nih.gov/pub/taxonomy/accession2taxid) (You want the file called nucl_gb.accession2taxid.gz). My code works on fasta files that have already been split and are named like nt.fna.00 ect. You just need to make sure that nucl_gb.accesion2taxid is in the same folder as your nt files and parse_nt.py. Then run `python parse_nt.py` At this point if are short on disk space you can delete the nt.gz, nt.fna as well as the unprocessed chunks.
 
 The other constraint for building the database is going to be the size on your hard drive. Currently all of NT takes around 2.5TB of hard drive space and the more chunks you make the more HD space you need.  
 
@@ -88,13 +88,13 @@ Next download and install [my build of SNAP](https://github.com/rcs333/snap). Th
 
 Then use `snap index nt.00 nt.00.snapindex -tNumThreads` If snap prompts you that you need to increase the location size than do so with `snap index nt.00 nt.00.snapindex -tNumThreads -locationSize 5` and hope that the index build finishes. SNAP is nice because it'll print really helpful timing results and you can see if the index build looks like it's going to finish before the entropic heat death of the universe. Obviously you need to run this command for each of your chunks, so if you have 14 chunks you'll need to build each of these. 
 
-Once your database is built you'll also need to modify multi_snap_shell.py. If you have more than 14 databases you need to add those numbers to line 7 - just make sure they're encased in quotes and comma seperated. Then change line 8 to represent where your databases are stored and change line 9 to point to where you installed SNAP.
+Once your database is built you'll also need to modify multi_snap_shell.py. If you have more than 14 databases you need to add those numbers to line 7 - just make sure they're encased in quotes and comma separated. Then change line 8 to represent where your databases are stored and change line 9 to point to where you installed SNAP.
 
 ### Configuring the tiebreaking
 #### approximate time quick 
-The tiebreaking code requires some parts of a krakenuniq tiebreaker. You need a seqid2taxid and a taxDB file, the best way to do this is to use the provided scripts on the github and then just point to that folder. You also need a database.idx and database.kdb file but these can be empyt. Once you've got that setup up make sure tie_break.py points to the right places. Lines 17 and 18 need to point to your krakenuniq-report script and the database respectivey.
+The tiebreaking code requires some parts of a krakenuniq tiebreaker. You need a seqid2taxid and a taxDB file, the best way to do this is to use the provided scripts on the github and then just point to that folder. You also need a database.idx and database.kdb file but these can be empty. Once you've got that setup up make sure tie_break.py points to the right places. Lines 17 and 18 need to point to your krakenuniq-report script and the database respectively.
 
-You also will want to configure the main CLOMP.sh script. For this change the hard coded paths in this file to point to the place where you downloaded this repository. Then you can add CLOMP.sh to your PATH variable. To do this for all users `sudo nano /etc/enviornment` Then add ':/path/to/CLOMP_folder' to the end of the PATH line. Then save this file and re log in and all users will be able to clomp away by navigating to the folder which has their fastq files in the terminal and typing `CLOMP.sh`.
+You also will want to configure the main CLOMP.sh script. For this change the hard coded paths in this file to point to the place where you downloaded this repository. Then you can add CLOMP.sh to your PATH variable. To do this for all users `sudo nano /etc/environment` Then add ':/path/to/CLOMP_folder' to the end of the PATH line. Then save this file and re log in and all users will be able to clomp away by navigating to the folder which has their fastq files in the terminal and typing `CLOMP.sh`.
 
 This assumes that you want to host trim then host filter and that all your files are in a folder with the extension .fastq. This can all be tweaked by changing the wildcard expressions in the opening for loops. Additionally, if you created more than 14 SNAP databases you'll have to modify the loops. 
 
@@ -103,7 +103,7 @@ Once everything is setup you can just run CLOMP.sh from inside a folder that con
 
 # Technical 
 
-Adapter trimming and quality filtering is relatively self explanitory - the current build has the minimum read length set to 30. If you're doing runs with lengths any greater than that this should get increased. SNAP alignment is based off 20mers and really the read lengths should be above 50. This is also in the options for the SNAP aligner. 
+Adapter trimming and quality filtering is relatively self explanatory - the current build has the minimum read length set to 30. If you're doing runs with lengths any greater than that this should get increased. SNAP alignment is based off 20mers and really the read lengths should be above 50. This is also in the options for the SNAP aligner. 
 
 Host filtering is done using bowtie2 because that's the first program I tried to use for host filtering and it seems to work pretty well. I'm also currently trying to host filter against the whole genome of spirometeria entericia because it's absolute garbage.
 
@@ -114,10 +114,9 @@ SNAP will report potentially multiple alignments for each read for each database
 
 1. Aggregate all assignments for each read and only keep alignments that are the best edit distance or one worse than best edit distance
 2. Any read that ever aligned to human within one edit of the best assignment will be assigned to human.
-3. All assignments get walked up NCBI taxonomy tree untill they are not 'no rank'. ( this is actually a bit arbitrary as sometimes what we think of as distinct species are classified at different ranks on the tree. See human coronaviruses. I'm not sure why we originally implemented this but it'd be trivial to remove. 
+3. All assignments get walked up NCBI taxonomy tree until they are not 'no rank'. ( this is actually a bit arbitrary as sometimes what we think of as distinct species are classified at different ranks on the tree. See human coronaviruses. I'm not sure why we originally implemented this but it'd be trivial to remove. 
 4. Count number of times the most common taxid is assigned to the read
 5. If 90% or greater of the assignments are to the most common taxid - assign this read to this taxid
 6. If under 90% of the assignments are to the most common taxid then perform an intersection on the NCBI taxonomy tree's of ALL remaining reads. 
 
-For the samples and sample types I've been testing this seems to strike a really good balance of accuratly placing sequencing but also not over imputing. Of course weird edge cases pop up, like synthetic herpesviruses being a discreet taxid that goes tree origin -> synthetic herpes viruses. As you can imagine the intersection of this case resulted in reads being placed at the origin of the tree of life. But the nice thing is that there aren't that many synthetic herpes viruses in the database so this case no longer gets aggregated. 
-1
+For the samples and sample types I've been testing this seems to strike a really good balance of accurately placing sequencing but also not over imputing. Of course weird edge cases pop up, like synthetic herpesviruses being a discreet taxid that goes tree origin -> synthetic herpes viruses. As you can imagine the intersection of this case resulted in reads being placed at the origin of the tree of life. But the nice thing is that there aren't that many synthetic herpes viruses in the database so this case no longer gets aggregated. 
