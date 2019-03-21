@@ -1,6 +1,6 @@
 # CLOMP - CLinically Okay Metagenomic Pipeline
 
-A entirely open source, fast, accurate and highly configurable end to end metagenomics pipeline for the people.
+A entirely open source, fast, accurate, multi-sample and highly configurable end to end metagenomics pipeline for the people.
 
 ### Table of Contents
 1. [This Introduction and general description](#Introduction)
@@ -13,26 +13,45 @@ A entirely open source, fast, accurate and highly configurable end to end metage
 
 # Introduction
 
+This is the publically available source code and documentation for CLOMP - UW Virology's fully functional metagenomic pipeline. CLOMP takes raw sequencing reads straight off the sequencer and taxonomically assigns as many reads as possible. While CLOMP is currently relatively difficult to set up, once properly configured you can get accurate taxonomical classification of an entire MiSeq run overnight. 
+
+Broadly the execution of the pipeline is broken down into four steps:
+### 1. Read quality filtering and adapter trimming 
+
+First, we take all reads and remove adapter and low quality sequences from the ends of the reads, and throw out reads that are generally low quality or too short. This is done using [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) and a custom adapter file. 
+
+### 2. Host read subtraction
+
+Next, reads are aligned to a host geneome and thrown out. As this pipeline is designed to be 'clinically okay' and for human consuption, by default we align to the Human Genome (hg38 p.12). Depending on the sample type, this may remove almost all reads. This is great because it allows the rest of the pipeline to actually run relatively quickly. However, with very little effort you can configure CLOMP to filter out almost any host genome (as long as it's actually been sequenced). Host subtraction is performed with [bowtie2](https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.4.3)
+
+### 3. Alignment of every read to NT
+
+After we've got good quality non-host reads we take all remaining reads and align them to NCBI's NT. This is performed with the lovely tool [SNAP](http://snap.cs.berkeley.edu/). While there are a lot of important differences between SNAP and BLAST, you can basically just think of this step as running a super fast blast search of every read against NT. The fact that we align all reads to NT allows us to accuratley place many more reads than approaches that use a smaller database. 
+
+### 4. Tiebreaking and visualization
+
+Finally we give each read one taxonomical assignment. Again think of this as manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have sequence that is highly conserved (like ribosomal RNA) cannot be accuratley placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the speciees from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing vizualisation tool [Pavian](https://github.com/fbreitwieser/pavian)
 
 # Installation
-## System Specs
+## Required System Specs
 Linux OS (This can theoretically work on a Mac but do yourself a favor and don't)
 
 ~3Tb of hard drive space. This can be on discontinous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
 
-As much RAM as you can get. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to sucesfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
+Between 32 and 5000 Gigabytes of RAM. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to sucesfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
+
+An internet connection is required to do automatic alingment of results. And to download and install tools and databases.
 
 ## Installation and setup
-The installation of my scripts is as simple as copying them to your computer - functionally all they are is wrappers for other programs. The first and hardest step of this will be configuring and setting up all the other programs and their associated databases. Once that's done all you have to do is change my scripts to point to your local database and tool locations. This guide tries as hard as possible to make this process accessible but you will be immensely helped if you can set up and run bowtie2, snap, and Trimmomatic on your own without problems. However, once you've got all the dependencies installed correctly pretty much all you have to do is change a few lines of code to point to these and then you'll be good to go. 
+The installation of my scripts is as simple as copying them to your computer - functionally all they are is wrappers for other programs. The first and hardest step of this will be configuring and setting up all the other programs and their associated databases. Once that's done you have to change my scripts to point to your local database and tool locations, then you need to add the main script to the PATH and you'll be good to go. This guide tries as hard as possible to make this process accessible but you will be immensely helped if you can set up and run bowtie2, snap, and Trimmomatic on your own without problems. However, once you've got all the dependencies installed correctly pretty much all you have to do is change a few lines of code to point to these and then you'll be good to go. 
 
-### Dependencies
-
+### The easy dependencies
+#### Approximate time: ~5 - 0 minutes (these are already installed on a lot of systems)
 [Python](https://www.python.org/downloads/) (Any version is fine) Also need the ete3 module `python -m pip install ete3`
 
 [JRE](https://www.oracle.com/technetwork/java/javase/downloads/jre8-downloads-2133155.html) (To run Trimmomatic)
 
-libz 
-
+libz `sudo apt install libz-dev`
 
 ### 1. Getting Trimmomatic set up. 
 #### Approximate time: ~5 minutes
