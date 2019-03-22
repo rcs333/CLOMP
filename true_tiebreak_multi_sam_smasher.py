@@ -137,7 +137,87 @@ def tie_break(taxid_list):
 	else: 
 		return max(set(list_of_assignments), key=list_of_assignments.count)
 
+# takes a list in the form [[taxid, edit_distance], [taxid, edit_distance], ..]
+# returns a single taxid as the final assignment 
+def tie_break_v2(taxid_list):
+	# Figure out the best (lowest) edit distance that our read aligned with 
+	score_list = []
+	actual_taxid_list = []	
+	for id in taxid_list:
+		score_list.append(id[1])
+	best_edit_distance = min(score_list)
 	
+	# discard all assignments that are not within 1 of the best edit distance 
+	for id in taxid_list:
+		if id[1] <= best_edit_distance + 1:
+			actual_taxid_list.append(id[0])
+	
+	# overwrite variable to type less
+	taxid_list = actual_taxid_list
+
+	# if read ever aligned to human then return human taxid 
+	if '9606' in taxid_list:
+		return 9606
+		
+	# get full taxonomic lineages for every taxid that was assigned to this read 
+	for id in taxid_list:
+		# not all taxonomic assignments have lineages
+		try:
+			lineage = ncbi.get_lineage(id)
+			# discard any lineages that contain 'other sequences' or 'artificial sequences' 
+			if (12908 in lineage) or (28384 in lineage):
+				lineage = [] 
+		except:
+			lineage = []
+		
+		# if we got a lineage add it to our lineage list
+		if len(lineage) != 0:
+			lineage_list.append(lineage)
+	
+	# if we never added anything to our lineage list return '*' (unassigned)
+	if len(lineage_list) == 0:
+		return '*'
+	
+	# count the number of times each node occurs in all lineages
+	taxid_to_count_map = {}
+	for each_lineage in lineage_list:
+		for each_taxid in each_lineage:
+			if each_taxid in taxid_to_count_map:
+				taxid_to_count_map[each_taxid] += 1
+			else:
+				taxid_to_count_map[each_taxid] = 1
+	
+	# go through all taxid -> count map and throw out taxids that occur in less than
+	# 90% of cases (with integer rounding) basically:
+	# if less than 10 total assignments
+	# 	thrown out all taxids appearing once or less
+	# if between 10 and 20 total assignments
+	# 	throw out all taxids appearing twice or less
+	# and so on and so forth adding +1 every 10 
+	num_assignments = len(lineage_list)
+	surviving_taxids = []
+	for taxid_key in taxid_to_count_map:
+		if taxid_to_count_map[taxid_key] >= num_assignments - ((num_assignments /10) + 1) :
+			surviving_taxids.append(taxid_key)
+	
+	# if we found no taxids at above ~90% return unassigned. This should rarely happen
+	# because essentially all taxids start at 1. the case of a read aligning to one phage and one
+	# bacteria would result in the read getting assigned to 1 
+	if len(surviving_taxids) == 0:
+		return '*'
+	
+	# go through and find the remaining taxid with the longest lineage ( most specific taxid left)
+	d = {}
+	# get map of taxid lineage lists
+	for the_value in surviving_taxids:
+		d[the_value] = len(ncbi.get_lineage(the_value))
+	
+	# return the longest hit
+	assigned_hit = max(d.iteritems(), key=operator.itemgetter(1))[0]
+	return assigned_hit
+
+
+
 # use the krakenuniqu report function on a full ncbi taxdmp to actually include EVERY taxid in the report 
 # this lets us assign reads directly to any species that's in NCBI taxonomy 
 def new_write_kraken(basename, final_counts_map, num_unassigned):
