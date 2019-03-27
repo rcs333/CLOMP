@@ -36,120 +36,20 @@ KRAKEN_LOC = '/tools/krakenuniq/krakenuniq-report'
 #KRAKEN_DB_LOC = '/hd2/krakenuniq_all/krakenuniq_all2/all/'
 KRAKEN_DB_LOC = '/hd2/kraktest/'
 
-# takes a list of the form[[taxid,edit distance],[taxid,edit distance],[ect]] and breaks ties
-# returning a single taxid
-def tie_break(taxid_list):
-	list_of_lineages = []
-	list_of_assignments = []
-	actual_taxid_list = []
-	score_list = []
-	
-	# taxid list is a list of tuples so we go through and put all the edit distances into a new list
-	for id in taxid_list:
-		score_list.append(id[1])
-	
-	# then we figure out the 'best' edit distance. Edit distances are like golf, lower is better
-	# except for negative numbers, which is why any edit distance that's negative gets moved to +100 
-	# before passing into this function
-	id_max = min(score_list)
-	
-	# create a new list of taxids only holding taxids with the best edit distance or one greater
-	for id in taxid_list:
-		if id[1] <= id_max + 1:
-			actual_taxid_list.append(id[0])
-	
-	# then overwrite the original variable with just a list of good taxids, taxid_list is now [taxid,taxid,taxid]
-	taxid_list = actual_taxid_list
-	# if the read ever aligned to human just call it human and move on
-	if '9606' in taxid_list:
-		return 9606
-
-	is_read_unassigned = True 
-	# go through every taxid that got assigned to the current read 
-	for id in taxid_list:
-		# only attempt to call lineage on hits that aligned to something 
-		if id != '*':
-			# get list of NCBI taxonomy lineage for the taxid 
-			try:
-				lineage = ncbi.get_lineage(id)
-				# if the taxid comes from either 'unclassified sequences' or 'other sequences' 
-				# we'll not count that assignment 
-				if (12908 in lineage) or (28384 in lineage):
-					lineage = []
-			except:
-				lineage = []
-			# walk backwards through the taxonomically lineage and remove leaves until 
-			# we see a taxid that is not 'no rank'
-			for x in range(len(lineage) -1, -1, -1):
-				if ncbi.get_rank([lineage[x]])[lineage[x]] == 'no rank':
-					lineage.pop(x)
-				else:
-					break
-			
-			# if we either couldn't get an NCBI linage or removed all nodes 
-			# call this taxid unassigned 
-			if len(lineage) == 0:
-				list_of_assignments.append('*')
-				
-			else:
-				# if we got an assignment, change boolean flag to note that we have at least one
-				# good tax assignment for this read 
-				is_read_unassigned = False
-				# store complete lineage with 'no ranks' removed
-				list_of_lineages.append(lineage)
-				# store the exact assignment - we only append to the linage list if the taxid is valid
-				list_of_assignments.append(lineage[-1])
-	
-	# if we never saw a taxid other than '*' we'll return this and handle it later
-	if is_read_unassigned:
-		return '*'
-	# make sure that we have a list with only valid ranked NCBI taxonomies 
-	for thing in list_of_assignments:
-		if thing == '*':
-			list_of_assignments.remove('*')
-
-	if len(list_of_assignments) == 0:
-		return '*'
-	
-	# count the number of times that the most common taxid was 'voted' for
-	most_common_id_count = list_of_assignments.count(max(set(list_of_assignments), key=list_of_assignments.count))
-	
-	# if less than 90% of hits go to the best hit then we just perform an intersection
-	# this covers both the case of assignments being higher up the tree, or to different species 
-	# if we only have two hits just intersect them - this won't change anything if the assignments
-	# are the same and if they're different it'll place them correctly
-	total_counts = len(list_of_assignments)
-	if most_common_id_count <= total_counts - (total_counts / 10):
-
-		lineage_intersect = set.intersection(*map(set,list_of_lineages))
-		
-		# pull taxid with the longest lineage this is just because the we converted the list into a set which un-orders it
-		# so we want to assign the read to the most specific taxid that survived the intersection 
-		d = {}
-		# get map of taxid lineage lists
-		for the_value in lineage_intersect:
-			d[the_value] = len(ncbi.get_lineage(the_value))
-		# figure out the most specific taxid
-		assigned_hit = max(d.iteritems(), key=operator.itemgetter(1))[0]
-		return assigned_hit
-		
-	# if we didn't do an intersection just return the most common taxid 
-	else: 
-		return max(set(list_of_assignments), key=list_of_assignments.count)
 
 # takes a list in the form [[taxid, edit_distance], [taxid, edit_distance], ..]
 # returns a single taxid as the final assignment 
-def tie_break_v2(taxid_list):
+def tie_break(taxid_list):
 	# Figure out the best (lowest) edit distance that our read aligned with 
 	score_list = []
 	actual_taxid_list = []	
 	for id in taxid_list:
 		score_list.append(id[1])
-	best_edit_distance = min(score_list)
+	best_edit_distance = min(score_list) + 1
 	
 	# discard all assignments that are not within 1 of the best edit distance 
 	for id in taxid_list:
-		if id[1] <= best_edit_distance + 1:
+		if id[1] <= best_edit_distance:
 			actual_taxid_list.append(id[0])
 	
 	# overwrite variable to type less
@@ -158,7 +58,7 @@ def tie_break_v2(taxid_list):
 	# if read ever aligned to human then return human taxid 
 	if '9606' in taxid_list:
 		return 9606
-		
+	lineage_list = []
 	# get full taxonomic lineages for every taxid that was assigned to this read 
 	for id in taxid_list:
 		# not all taxonomic assignments have lineages
@@ -171,11 +71,12 @@ def tie_break_v2(taxid_list):
 			lineage = []
 		
 		# if we got a lineage add it to our lineage list
-		if len(lineage) != 0:
+		# lists have implicit boolean(ness) in python :D 
+		if lineage:
 			lineage_list.append(lineage)
 	
 	# if we never added anything to our lineage list return '*' (unassigned)
-	if len(lineage_list) == 0:
+	if not lineage_list:
 		return '*'
 	
 	# count the number of times each node occurs in all lineages
@@ -195,9 +96,10 @@ def tie_break_v2(taxid_list):
 	# 	throw out all taxids appearing twice or less
 	# and so on and so forth adding +1 every 10 
 	num_assignments = len(lineage_list)
+	threshold = num_assignments - ((num_assignments /10) + 1) 
 	surviving_taxids = []
 	for taxid_key in taxid_to_count_map:
-		if taxid_to_count_map[taxid_key] >= num_assignments - ((num_assignments /10) + 1) :
+		if taxid_to_count_map[taxid_key] >= threshold:
 			surviving_taxids.append(taxid_key)
 	
 	# if we found no taxids at above ~90% return unassigned. This should rarely happen
