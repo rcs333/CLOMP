@@ -61,7 +61,7 @@ You can download [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic) a
 
 
 ### 2. Get human host filtering set up. 
-#### Approximate time: Setup ~2 hours, Index build ~1 day 
+#### Approximate time: ~1 hour
 First you need to download and install [bowtie2](https://sourceforge.net/projects/bowtie-bio/files/bowtie2/2.3.4.3).
 
 Next you need to download a copy of the human genome. I use human genome hg38 (ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.27_GRCh38.p12) You want to download the two files that end in `_genomic.fna.gz` and `_rna_from_genomic.fna.gz` This may take quite a while to download. Then you need to unzip these two files. If you're trying to add other organisms or sequences to you host filtering download them now. 
