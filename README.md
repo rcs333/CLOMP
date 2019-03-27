@@ -114,9 +114,11 @@ SNAP will report potentially multiple alignments for each read for each database
 
 1. Aggregate all assignments for each read and only keep alignments that are the best edit distance or one worse than best edit distance
 2. Any read that ever aligned to human within one edit of the best assignment will be assigned to human.
-3. All assignments get walked up NCBI taxonomy tree until they are not 'no rank'. ( this is actually a bit arbitrary as sometimes what we think of as distinct species are classified at different ranks on the tree. See human coronaviruses. I'm not sure why we originally implemented this but it'd be trivial to remove. 
-4. Count number of times the most common taxid is assigned to the read
-5. If 90% or greater of the assignments are to the most common taxid - assign this read to this taxid
-6. If under 90% of the assignments are to the most common taxid then perform an intersection on the NCBI taxonomy tree's of ALL remaining reads. 
+3. We then pick the most specific taxid that is shared by ~90% of assignments. The actual logic is you need at least number_of_assignments - (number of assignments // 10 + 1) reads. Where // is integer division. 
 
-For the samples and sample types I've been testing this seems to strike a really good balance of accurately placing sequencing but also not over imputing. Of course weird edge cases pop up, like synthetic herpesviruses being a discreet taxid that goes tree origin -> synthetic herpes viruses. As you can imagine the intersection of this case resulted in reads being placed at the origin of the tree of life. But the nice thing is that there aren't that many synthetic herpes viruses in the database so this case no longer gets aggregated. 
+
+For the samples and sample types I've been testing this seems to strike a really good balance of accurately placing sequencing but also not over imputing. Of course weird edge cases pop up due to the crazy nature of the NCBI taxonomy tree.  
+
+### Ask me about he licence ###
+
+I believe in free software. I think it would be extrememly disengenous to the bioinformatics community, and the greater scientific public to allow what is essentially a parsing script for multiple sam files to be put under a restrictive licence. This entire software is based off publically availible databases and tools - I also think that this pipeline (as in the order of the steps and the arguments) works quite well and could be widely used, hopefully making people's lives easier. 
