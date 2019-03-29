@@ -119,6 +119,6 @@ SNAP will report potentially multiple alignments for each read for each database
 
 For the samples and sample types I've been testing this seems to strike a really good balance of accurately placing sequencing but also not over imputing. Of course weird edge cases pop up due to the crazy nature of the NCBI taxonomy tree.  
 
-### Ask me about he licence ###
+### Ask me about the licence ###
 
 I believe in free software. I think it would be extrememly disengenous to the bioinformatics community, and the greater scientific public to allow what is essentially a parsing script for multiple sam files to be put under a restrictive licence. This entire software is based off publically availible databases and tools - I also think that this pipeline (as in the order of the steps and the arguments) works quite well and could be widely used, hopefully making people's lives easier. 
