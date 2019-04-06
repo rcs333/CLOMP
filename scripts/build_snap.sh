@@ -1,0 +1,14 @@
+/toools/snap2/snap/snap-aligner index nt.00 nt.00.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.00
+/toools/snap2/snap/snap-aligner index nt.01 nt.01.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.01
+/toools/snap2/snap/snap-aligner index nt.02 nt.02.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.02
+/toools/snap2/snap/snap-aligner index nt.03 nt.03.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.03
+/toools/snap2/snap/snap-aligner index nt.04 nt.04.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.04
+/toools/snap2/snap/snap-aligner index nt.05 nt.05.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.05
+/toools/snap2/snap/snap-aligner index nt.06 nt.06.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.06
+/toools/snap2/snap/snap-aligner index nt.07 nt.07.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.07
+/toools/snap2/snap/snap-aligner index nt.08 nt.08.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.08
+/toools/snap2/snap/snap-aligner index nt.09 nt.09.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.09
+/toools/snap2/snap/snap-aligner index nt.10 nt.10.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.10
+/toools/snap2/snap/snap-aligner index nt.11 nt.11.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.11
+/toools/snap2/snap/snap-aligner index nt.12 nt.12.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.12
+/toools/snap2/snap/snap-aligner index nt.13 nt.13.snapindex -t42 -locationSize 5 2> &1 | tee snaplog.13
