@@ -10,12 +10,12 @@ for line in open('nucl_gb.accession2taxid'):
 	seq_2_taxid[line_list[1]] = line_list[2].rstrip()
 
 
-for file_name in glob.glob('nt.fna.*'):
+for file_name in glob.glob('nt.*'):
 	dna_string = ''
 	strain_list = []
 	genome_list = []
 	print('reading ' + file_name + ' into memory')
-	num = file_name.split('.')[2]
+	num = file_name.split('.')[1]
 	for line in open(file_name):
 		if line[0] == '>':
 			strain_list.append(line.rstrip())
