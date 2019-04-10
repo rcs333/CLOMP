@@ -13,12 +13,17 @@
 #		You should have received a copy of the GNU General Public License
 #		along with this program. If not, see <http://www.gnu.org/licenses/>.
 
+# The main CLOMP script, this just goes through the 4 key programs in a row
 
-# put four python calls into a shell script so I can type about 20 less characters each execution 
+# unzip any fastqs that need it 
 echo 'Unzipping fastq.gz files (if any)'
 gunzip *.gz 
 echo 'Done unzipping' 
+# Trim low quality and short reads 
 python /tools/CLOMP/trim_shell.py
+# Subtract reads aligning to the human genome
 python /tools/CLOMP/host_filter.py
+# Align all reads to NT
 python /tools/CLOMP/multi_snap_shell.py
+# Parse alignments and make final assignments 
 python /tools/CLOMP/true_tiebreak_multi_sam_smasher.py
