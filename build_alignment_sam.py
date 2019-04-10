@@ -51,7 +51,7 @@ for file_name in glob.glob('*report.tsv'):
 	# for every taxid we assemble a list of reads that are at the given species rank or lower 
 	for taxid in taxid_to_assemble:
 		taxid_search_list = [str(taxid)]
-		taxid_search_list = taxid_search_list + ncbi.get_descendant_taxa(taxid)
+		taxid_search_list = taxid_search_list + ncbi.get_descendant_taxa(taxid, get_descendant_taxa=True)
 		list_of_reads_to_pull = []
 		for a_line in open(base + '_assignments.txt'):
 			a_line_list = a_line.split('\t')
