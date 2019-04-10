@@ -3,7 +3,7 @@
 A entirely open source, fast, accurate, multi-sample and highly configurable end to end metagenomics pipeline for the people.
 
 ### Table of Contents
-1. [This Introduction and general description](#Introduction)
+1. [Introduction and general description](#Introduction)
 
 2. [Installation and configuration guide](#Installation)
 
@@ -30,7 +30,9 @@ After we've got good quality non-host reads we take all remaining reads and alig
 
 ### 4. Tiebreaking and visualization
 
-Finally we give each read one taxonomical assignment. Think of this like manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have highly conserved sequence (like ribosomal RNA) cannot be accurately placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be confidant of. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the species from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing visualization tool [Pavian](https://github.com/fbreitwieser/pavian)
+Finally we give each read one taxonomical assignment. Think of this like manually scrolling through some blast results and determining the ultimate origin of each read. Of course, reads that have highly conserved sequence (like ribosomal RNA) cannot be accurately placed at the species level. A big part of the tiebreaking step is placing each read at the most specific taxonomical description that we can be sure of. For example, if a read is aligning super well to both e. coli and pseudomonas then we can't say for sure the species from which the read came, but we can be pretty sure it's a proteobacteria. Once this has been done for every read the final results get packed up for consumption with the amazing visualization tool [Pavian](https://github.com/fbreitwieser/pavian)
+
+Additional scripts are included for some optional steps, like pulling all reads aligning at or below a given taxa as well as generating coverage maps.
 
 # Installation
 ## Required System Specs
@@ -40,7 +42,7 @@ Linux OS (This can theoretically work on a Mac but **do yourself a favor and don
 
 Between 32 and 5000 Gigabytes of RAM. The more RAM you have the quicker this will go. This was originally developed with 256Gb RAM but I've also been able to successfully configure this pipeline on an old iMac with 16 cores and 32Gb of RAM. (More on that later) 
 
-An internet connection is required to do automatic alignment of results. And to download and install tools and databases.
+An internet connection is required to download and install tools and databases as well as for automatic alignment of results.
 
 ## Installation and setup
 The installation of my scripts is as simple as copying them to your computer - functionally all they are is wrappers for other programs. The first and hardest step of this will be configuring and setting up all the other programs and their associated databases. Once that's done you have to change my scripts to point to your local database and tool locations, then you need to add the main script to the PATH and you'll be good to go. This guide tries as hard as possible to make this process accessible but you will be immensely helped if you can set up and run bowtie2, snap, and Trimmomatic on your own without problems. However, once you've got all the dependencies installed correctly pretty much all you have to do is change a few lines of code to point to these and then you'll be good to go. 
