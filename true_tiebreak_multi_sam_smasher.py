@@ -26,6 +26,7 @@ import glob
 import operator
 from collections import Counter
 from ete3 import NCBITaxa
+# loads ncbi taxonomy database into a sqlite database
 ncbi = NCBITaxa()
 import timeit
 
@@ -33,7 +34,7 @@ VERSION = '1.0'
 
 # the location of the fully built krakenuniq-report program 
 KRAKEN_LOC = '/tools/krakenuniq/krakenuniq-report'
-#KRAKEN_DB_LOC = '/hd2/krakenuniq_all/krakenuniq_all2/all/'
+# krakendb 
 KRAKEN_DB_LOC = '/hd2/kraktest/'
 
 
@@ -45,6 +46,7 @@ def tie_break(taxid_list):
 	actual_taxid_list = []	
 	for id in taxid_list:
 		score_list.append(id[1])
+	# we want to keep alignments that are within one of our best edit distance so add one here
 	best_edit_distance = min(score_list) + 1
 	
 	# discard all assignments that are not within 1 of the best edit distance 
@@ -55,21 +57,19 @@ def tie_break(taxid_list):
 	# overwrite variable to type less
 	taxid_list = actual_taxid_list
 
-	# if read ever aligned to human then return human taxid 
-	if '9606' in taxid_list:
-		return 9606
 	lineage_list = []
 	# get full taxonomic lineages for every taxid that was assigned to this read 
 	for id in taxid_list:
 		# not all taxonomic assignments have lineages
 		try:
+			# returns a list containing the complete NCBI taxonomical lineage as integers for a given taxid 
 			lineage = ncbi.get_lineage(id)
 			# discard any lineages that contain 'other sequences' or 'artificial sequences' 
 			if (12908 in lineage) or (28384 in lineage):
 				lineage = [] 
 		except:
 			lineage = []
-		
+
 		# if we got a lineage add it to our lineage list
 		# lists have implicit boolean(ness) in python :D 
 		if lineage:
@@ -122,6 +122,7 @@ def tie_break(taxid_list):
 
 # use the krakenuniqu report function on a full ncbi taxdmp to actually include EVERY taxid in the report 
 # this lets us assign reads directly to any species that's in NCBI taxonomy 
+
 def new_write_kraken(basename, final_counts_map, num_unassigned):
 	print('Preparing output for ' + basename)
 	# we write a file in the form taxid\tcount 
@@ -149,6 +150,8 @@ if __name__ == '__main__':
 	base_col = set()
 	main_start_time = timeit.default_timer()
 	# create a list of the unique base names 
+	
+
 	for item in file_list:
 		base_col.add(item.split('_')[0])
 	# iterate through each base name, keeping the same map{} files for each database, so these will get LARGE
@@ -203,19 +206,25 @@ if __name__ == '__main__':
 		unass_count = 0
 		taxid_to_read_set = {}
 		
+		# go through every read 
 		for read_key in read_to_taxids_map.keys():
+			# assign one taxid to read 
 			tax_assignment = tie_break(read_to_taxids_map[read_key])
+			
+			# read is unassigned write it to the unassigned file 
 			if tax_assignment == '*':
-				e.write(read_key + '\t' + '0' + '\t' + reads_seq_map[read_key] + '\n')
+				e.write('>' + read_key + '\n' + reads_seq_map[read_key] + '\n')
 				unass_count += 1
+			# otherwise write it out to the read by read assignment file 
 			else:
 				g.write(read_key + '\t' + str(tax_assignment) + '\t' + reads_seq_map[read_key] + '\n')
+				# create a mapping of taxid -> unique reads 
 				if str(tax_assignment) in taxid_to_read_set:
 					taxid_to_read_set[str(tax_assignment)].add(reads_seq_map[read_key],)
 				else:
 					taxid_to_read_set[str(tax_assignment)] = set([reads_seq_map[read_key]])
 					
-
+			
 				if tax_assignment in final_assignment_counts:
 					final_assignment_counts[tax_assignment] += 1
 				else:
