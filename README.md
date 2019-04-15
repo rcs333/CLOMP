@@ -9,7 +9,7 @@ A entirely open source, fast, accurate, multi-sample and highly configurable end
 
 3. [Execution and run guide](#Running)
 
-4. [Technical details and my ramblings](#Technical)
+4. [Technical details and other ramblings](#Technical)
 
 # Introduction
 
@@ -112,8 +112,15 @@ Host filtering is done using bowtie2 because that's the first program I tried to
 SNAP alignment uses a max edit distance of 11 and an om of 1. The default omax of 20 would potentially need to be tweaked depending on the number of databases you split into. 
 
 ### Basic tiebreaking logic
-SNAP will report potentially multiple alignments for each read for each database. You'll get as many sam files as you have chunks of NT. true_tiebreak_multi_sam_smasher.py contains all the meat of tiebreaking, which is as follows:
+SNAP will report potentially multiple alignments for each read for each database. You'll get as many sam files as you have chunks of NT. true_tiebreak_multi_sam_smasher.py contains all the meat of tiebreaking. I've gone through several different iterations of the specific tiebreaking logic. The current method is optomized to reduce species level misclassifications, at the cost of underspeciating reads. Essentially we will only speciate reads which appear to be unambigous. The basic tiebreaking logic is as follows.
 
+1. SNAP is run with an edit distance of 11 and accepts alignments that are, at worst, one away from the best alignment. (So if the best alignment has an edit distance of 4, we would accept alignments with edit distance 5 - but not 6). 
+
+2. Because each SNAP database has a different composition we go through all assignments and throw out any that are more than 6 edit distance away from the best hit. This essentially just throws out the case where we get one pretty tenuous hit in one database, this is much more common for less heavily sequenced organisims. 
+
+Additionally we have used the following logic in the past, which does a good job of speciating reads, but at the cost of incorrectly speciating some reads, mainly due to disproportonate amounts of species present in the database. This code is contained in the comments of the tiebreaking file and guides for switching between the two is also in the comments. 
+
+3. We then take the most specific taxonomical assignment that has 100% agreement. 
 1. Aggregate all assignments for each read and only keep alignments that are the best edit distance or one worse than best edit distance
 2. Any read that ever aligned to human within one edit of the best assignment will be assigned to human.
 3. We then pick the most specific taxid that is shared by ~90% of assignments. The actual logic is you need at least number_of_assignments - (number of assignments // 10 + 1) reads. Where // is integer division. 
