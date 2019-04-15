@@ -34,7 +34,6 @@ VERSION = '1.0'
 
 # the location of the fully built krakenuniq-report program 
 KRAKEN_LOC = '/tools/krakenuniq/krakenuniq-report'
-# krakendb 
 KRAKEN_DB_LOC = '/hd2/kraktest/'
 
 
@@ -47,7 +46,7 @@ def tie_break(taxid_list):
 	for id in taxid_list:
 		score_list.append(id[1])
 	# we want to keep alignments that are within one of our best edit distance so add one here
-	best_edit_distance = min(score_list) + 1
+	best_edit_distance = min(score_list) + 6
 	
 	# discard all assignments that are not within 1 of the best edit distance 
 	for id in taxid_list:
@@ -64,8 +63,8 @@ def tie_break(taxid_list):
 		try:
 			# returns a list containing the complete NCBI taxonomical lineage as integers for a given taxid 
 			lineage = ncbi.get_lineage(id)
-			# discard any lineages that contain 'other sequences' or 'artificial sequences' 
-			if (12908 in lineage) or (28384 in lineage):
+			# discard any lineages that contain 'other sequences' or 'artificial sequences' or 'environmental samples'
+			if (12908 in lineage) or (28384 in lineage) or (48479 in lineage):
 				lineage = [] 
 		except:
 			lineage = []
@@ -96,7 +95,10 @@ def tie_break(taxid_list):
 	# 	throw out all taxids appearing twice or less
 	# and so on and so forth adding +1 every 10 
 	num_assignments = len(lineage_list)
-	threshold = num_assignments - ((num_assignments /10) + 1) 
+	# ---------Changing the tie breaking logic ---------
+	# Swap this line for more aggressive speciation at the cost of more incorrect speciation 
+	#threshold = num_assignments - ((num_assignments /10) + 1) 
+	threshold = num_assignments
 	surviving_taxids = []
 	for taxid_key in taxid_to_count_map:
 		if taxid_to_count_map[taxid_key] >= threshold:
@@ -140,7 +142,7 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 	l.close()
 	
 	# kraken-report creates a file that Pavian likes - we name the file base_final_report.tsv
-	kraken_report_cmd = KRAKEN_LOC + ' --db ' + KRAKEN_DB_LOC + ' --taxon-counts ' + basename + '_temp_kraken.tsv > ' + basename + '_truebreak_final_report.tsv'
+	kraken_report_cmd = KRAKEN_LOC + ' --db ' + KRAKEN_DB_LOC + ' --taxon-counts ' + basename + '_temp_kraken.tsv > ' + basename + '_final_report.tsv'
 	subprocess.call(kraken_report_cmd, shell=True)
 
 	 
