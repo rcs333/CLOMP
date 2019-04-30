@@ -36,7 +36,7 @@ Additional scripts are included for some optional steps, like pulling all reads 
 
 # Installation
 ## Required System Specs
-Linux OS (This can theoretically work on a Mac but **do yourself a favor and don't**)
+Linux OS (This can theoretically work on a Mac but **do yourself a favor and don't**).
 
 ~3Tb of hard drive space. This can be on discontinuous drives but I'm not including instructions for how that would work. This space is required just for holding your indexes and programs, so if you want to actually do processing and save the output for a sequencing run you'll need more hard drive space to hold your input data.
 
