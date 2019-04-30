@@ -1,14 +1,31 @@
+#	CLOMP - Clinically Okay Metagenomic Pipeline
+#	Copyright (C) 2019 Ryan C. Shean 
+#		This program is free software: you can redistribute it and/or modify
+#		it under the terms of the GNU General Public License as published by
+#		the Free Software Foundation, either version 3 of the License, or
+#		(at your option) any later version.
+
+#		This program is distributed in the hope that it will be useful,
+#		but WITHOUT ANY WARRANTY; without even the implied warranty of
+#		MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#		GNU General Public License for more details.
+
+#		You should have received a copy of the GNU General Public License
+#		along with this program. If not, see <http://www.gnu.org/licenses/>.
+
 import ast 
 import subprocess
 import glob
 import argparse 
+import os
 import operator
 from collections import Counter
 from ete3 import NCBITaxa
 import timeit
 ncbi = NCBITaxa()
 
-
+# takes a path to the ini file and reads in all the variables, all variables
+# are globals and assumed to exist and be valid 
 def parse_ini(ini_path):
 	for line in open(ini_path):
 		if line[0] and line[0] != '#' and '=' in line:
@@ -18,6 +35,12 @@ def parse_ini(ini_path):
 			if var == 'PAIRED_END':
 				global PAIRED_END
 				PAIRED_END = ast.literal_eval(val)
+			elif var == 'R1':
+				global R1
+				R1 = val
+			elif var == 'R2':
+				global R2
+				R2 = val
 			elif var == 'SAVE_MIDDLE_FILES':
 				global SAVE_MIDDLE_FILES
 				SAVE_MIDDLE_FILES = ast.literal_eval(val)
@@ -33,6 +56,9 @@ def parse_ini(ini_path):
 			elif var == 'INPUT_SUFFIX':
 				global INPUT_SUFFIX
 				INPUT_SUFFIX = val
+			elif var == 'OVERWRITE':
+				global OVERWRITE
+				OVERWRITE = ast.literal_eval(val)
 			elif var == 'TRIMMOMATIC_JAR_PATH':
 				global TRIMMOMATIC_JAR_PATH
 				TRIMMOMATIC_JAR_PATH = val
@@ -95,108 +121,162 @@ def parse_ini(ini_path):
 				BUILD_SAMS = ast.literal_eval(val)
 				
 			
-
-def host_filter(suffix):
-	for r1 in glob.glob('*' + suffix):
+# Takes a list of files to host filter and if output files don't exist, host filters and writes output
+# Returns a set containing all output files 
+def host_filter(to_host_filter_list):
+	# Use a set to prevent duplicates when using paired end reads 
+	done_host_filtering_list = set()
+	
+	for r1 in to_host_filter_list:
 		base = r1.split(BASE_DELIMITER)[0]
-		if PAIRED_END:
-			r2 = r1.split('R1')[0] + 'R2' + r1.split('R1')[1]
-			align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + BWT_DB_LOCATION + ' -q -1 ' + r1 + + ' -2 ' + r2 + ' -S ' + base + '_mappedSam ' + ' 2>&1 | tee -a ' + base + '.log'
-		else:
-			align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + BWT_DB_LOCATION + ' -q -U ' + r1 + ' -S ' + base + '_mappedSam' + ' 2>&1 | tee -a ' + base + '.log'
-		subprocess.call(align_cmd, shell=True)
-		
-		sort_cmd = 'samtools view -Sb -@ ' + THREADS + ' ' + base + '_mappedSam > ' + base + '_mappedBam' 
-		subprocess.call(sort_cmd, shell=True)
-		
-		sort_cmd2 = 'samtools sort -@ ' + THREADS + ' ' + base + '_mappedBam ' + base +  '_sorted'
-		subprocess.call(sort_cmd2, shell=True)
-		
-		index_cmd = 'samtools index ' + base + '_sorted.bam'
-		subprocess.call(index_cmd, shell=True)
-		
-		r1_cmd = 'samtools view -@ ' + THREADS + ' -F 0x40 ' + base + '_mappedBam | awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + base + '_R1' + BWT_SUFFIX
-		subprocess.call(r1_cmd,shell=True)
-		if PAIRED_END:
-			r2_cmd = 'samtools view -@ ' + THREADS + ' -f 0x40 ' + base + '_mappedBam | awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + base + '_R2' + BWT_SUFFIX
-			subprocess.call(r2_cmd, shell=True)
-		if BWT_CLEAN:
-			subprocess.call('rm ' + base + '_mappedSam', shell=True)
-			subprocess.call('rm ' + base + '_mappedBam', shell=True)
-			subprocess.call('rm ' + base + '_sorted.bam', shell=True)
-			subprocess.call('rm ' + base + '_sorted.bam.bai', shell=True)
-		if not SAVE_MIDDLE_FILES:
-			subprocess.call('rm ' + r1, shell=True)
+		if not os.path.isfile(base + R1 + BWT_SUFFIX) or OVERWRITE:
 			if PAIRED_END:
-				subprocess.call('rm ' + r2, shell=True)
-		
-		
-		
-def trim(suffix):
-	for file_name in glob.glob('*' + suffix):
-		base = file_name.split(BASE_DELIMITER)[0]
-		if PAIRED_END:
-			r1 = glob.glob(base + '*R1*.fastq')[0]
-			r2 = glob.glob(base + '*R2*.fastq')[0]
-			trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' PE -threads ' + THREADS + ' ' + r1 + ' ' + r2 + ' ' + base + '_R1_' + TRIM_SUFFIX + ' ' + base + '_R2_' + TRIM_SUFFIX + ' ' + SEQUENCER + TRIMMOMATIC_ADAPTER_PATH + TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
-		else:
-			trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' SE -threads ' + THREADS + ' ' + file_name +  ' ' + base + TRIM_SUFFIX +  ' ' + SEQUENCER + TRIMMOMATIC_ADAPTER_PATH + TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
-		subprocess.call(trim_cmd,shell=True)
-		if not SAVE_MIDDLE_FILES:
-			if PAIRED_END:
-				subprocess.call('rm ' + r1, shell=True)
-				subprocess.call('rm ' + r2, shell=True)
+				r2 = r1.split(R1)[0] + R2 + r1.split(R1)[1]
+				align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + \
+					BWT_DB_LOCATION + ' -q -1 ' + r1 + + ' -2 ' + r2 + ' -S ' + base + \
+					'_mappedSam ' + ' 2>&1 | tee -a ' + base + '.log'
 			else:
-				subprocess.call('rm ' + file_name)
+				align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + \
+				BWT_DB_LOCATION + ' -q -U ' + r1 + ' -S ' + base + '_mappedSam' + ' 2>&1 | tee -a ' + \
+				base + '.log'
+			subprocess.call(align_cmd, shell=True)
 		
+			sort_cmd = 'samtools view -Sb -@ ' + THREADS + ' ' + base + '_mappedSam > ' + base + '_mappedBam' 
+			subprocess.call(sort_cmd, shell=True)
+		
+			sort_cmd2 = 'samtools sort -@ ' + THREADS + ' ' + base + '_mappedBam ' + base +  '_sorted'
+			subprocess.call(sort_cmd2, shell=True)
+		
+			index_cmd = 'samtools index ' + base + '_sorted.bam'
+			subprocess.call(index_cmd, shell=True)
+		
+			r1_cmd = 'samtools view -@ ' + THREADS + ' -F 0x40 ' + base + '_mappedBam | ' \
+				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
+				base + R1 + BWT_SUFFIX
+			subprocess.call(r1_cmd,shell=True)
+			done_host_filtering_list.add(base + R1 + BWT_SUFFIX)
+			if PAIRED_END:
+				r2_cmd = 'samtools view -@ ' + THREADS + ' -f 0x40 ' + base + '_mappedBam | ' \
+				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
+				base + R1 + BWT_SUFFIX
+				subprocess.call(r2_cmd, shell=True)
+			
+			if BWT_CLEAN:
+				subprocess.call('rm ' + base + '_mappedSam', shell=True)
+				subprocess.call('rm ' + base + '_mappedBam', shell=True)
+				subprocess.call('rm ' + base + '_sorted.bam', shell=True)
+				subprocess.call('rm ' + base + '_sorted.bam.bai', shell=True)
+			if not SAVE_MIDDLE_FILES:
+				subprocess.call('rm ' + r1, shell=True)
+				if PAIRED_END:
+					subprocess.call('rm ' + r2, shell=True)
+		else:
+			done_host_filtering_list.add(base + R1 + BWT_SUFFIX)
+			
+	return done_host_filtering_list
+				
+		
+		
+# takes a string matching the end of file names that we want to trim. Uses trimmomatic to clip
+# adapter sequences and short/low quality reads. Writes output to TRIM_SUFFIX returns a set containing
+# all the output files 
+def trim(to_trim_list):
+	done_trim_list = set()
+	
+	for file_name in to_trim_list:
+		base = file_name.split(BASE_DELIMITER)[0]
+		if not os.path.isfile(base + R1 + TRIM_SUFFIX) or OVERWRITE:
+			if PAIRED_END:
+				r1 = file_name
+				r2 = glob.glob(base + '*' + R2 + '*.fastq')[0]
+				trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' PE -threads ' + THREADS + ' ' + r1 + ' ' + \
+					r2 + ' ' + base + R1 + TRIM_SUFFIX + ' ' + base + R2 + TRIM_SUFFIX + ' ' + SEQUENCER + \
+					TRIMMOMATIC_ADAPTER_PATH + TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
+				
+			else:
+				trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' SE -threads ' + THREADS + ' ' + file_name + \
+					' ' + base + R1 + TRIM_SUFFIX +  ' ' + SEQUENCER + TRIMMOMATIC_ADAPTER_PATH + \
+					TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
+				
+			subprocess.call(trim_cmd,shell=True)
+			done_trim_list.add(base+R1+TRIM_SUFFIX)
+			if not SAVE_MIDDLE_FILES:
+				if PAIRED_END:
+					subprocess.call('rm ' + r1, shell=True)
+					subprocess.call('rm ' + r2, shell=True)
+				else:
+					subprocess.call('rm ' + file_name)
+		else:
+			done_trim_list.add(base+R1+TRIM_SUFFIX)
+			
+	return done_trim_list
 
-def snap(suffix):
-	print('here')
+# takes a list of files and aligns all of them to all the snap databases found in DB_LIST
+# writes output .sam files to disk and returns a set containing all outputs 
+def snap(to_snap_list):
+	done_snap_list = set()
 	count = -1 
 	for db in DB_LIST:
-		print('*' + suffix)
-		print(glob.glob('*' + suffix))
+		added = False 
 		count +=  1
 		snap_cmd = SNAP_ALIGNER_LOCTION + ' '
-		
-		for file_name in glob.glob('*' + suffix):
-			print(file_name)
+		# if you comma separate commands all linking the same database SNAP will load the database
+		# once which DRASTICALLY speeds up the whole process
+		for file_name in to_snap_list:
 			base = file_name.split(BASE_DELIMITER)[0]
-			print('Aligning ' + base + ' to ' + db)
+			if not os.path.isfile(base + '_' + str(count) + '.sam') or OVERWRITE:
+				added = True
+				print('Aligning ' + base + ' to ' + db)
 			
-			if PAIRED_END:
-				r1 = base + '_R1_' + suffix
-				r2 = base + '_R2_' + suffix 
-				snap_cmd += ' paired ' + db + ' ' + r1 + ' ' + r2 + ' -o ' + base + '_' + str(count) + '.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
-			else:
-				snap_cmd += ' single ' + db + ' ' + file_name + ' -o ' + base + '_' + str(count) + '.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
-				
+				if PAIRED_END:
+					r1 = base + R1 + suffix
+					r2 = base + R2 + suffix 
+					snap_cmd += ' paired ' + db + ' ' + r1 + ' ' + r2 + ' -o ' + base + '_' + str(count) + \
+						'.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
+				else:
+					snap_cmd += ' single ' + db + ' ' + file_name + ' -o ' + base + '_' + str(count) + \
+						'.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
+			done_snap_list.add(base + '_' + str(count) + '.sam')
+		# only call snap if we've found at least one file without output
+		if added:
 			subprocess.call(snap_cmd,shell=True)
-	if not SAVE_MIDDLE_FILES:
-		subprocess.call('rm *' + suffix)
+		
+	return done_snap_list  
 	
-			
+
+# takes a list of taxid,edit_distances in the form [[taxid,edit_distance],[taxid,edit_distance],..
+# references the global variable LOGIC to control the underlying tiebreaking code, breaks ties and 
+# returns a single taxid as a string
 def tie_break(taxid_list):
 	score_list = [] 
 	actual_taxid_list = []
 	for id in taxid_list:
 		score_list.append(id[1])
+	
+	# this can filter out any hits that are sufficiently worse than the edit distance for the 'best'
+	# alignment - set to zero to only hold scores that have the best edit distance , and increase to a 
+	# number greater than the snap option -d to hold all hits
 	best_edit_distance = min(score_list) + EDIT_DISTANCE_OFFSET
 	
+	# filter off the above criteria 
 	for id in taxid_list:
 		if id[1] <= best_edit_distance:
 			actual_taxid_list.append(id[0])
-			
+	
+	# controls if use any alignment to the human genome as grounds for classification as human source
 	if H_STRICT:
 		if '9606' in actual_taxid_list:
 			return ['9606',False]
+			
 	taxid_list = actual_taxid_list
-	
 	lineage_list = []
 	
 	for id in taxid_list:
+		# Not all taixds have valid lineages 
 		try:
 			lineage = ncbi.get_lineage(id)
+			# filters out lineages that contain 'other sequences' or 'artificial 
+			#sequences' or 'enviornmental samples' 
 			if (12908 in lineage) or (28384 in lineage) or (48479 in lineage):
 				lineage = []
 		except:
@@ -207,7 +287,8 @@ def tie_break(taxid_list):
 	
 	if not lineage_list:
 		return ['*',False]
-		
+	
+	# count all taxids in all lineages 
 	taxid_to_count_map = {}
 	for each_lineage in lineage_list:
 		for each_taxid in each_lineage:
@@ -216,14 +297,22 @@ def tie_break(taxid_list):
 			else:
 				taxid_to_count_map[each_taxid] = 1
 	
+	
 	num_assignments = len(lineage_list)
 	if LOGIC == 'strict':
 		threshold = num_assignments
 	elif LOGIC == '90':
 		threshold = num_assignments - ((num_assignments /10) + 1) 
+	elif LOGIC == 'oneoff':
+		threshold = num_assignments - 1
+	else:
+		print('invalid logic threshold: defaulting to strict')
+		threshold = num_assignments
 		
 	surviving_taxids = []
 	for taxid_key in taxid_to_count_map:
+		# main filtering - everything that passes this step gets a list intersection and the 
+		# most specific taxid left is returned 
 		if taxid_to_count_map[taxid_key] >= threshold:
 			surviving_taxids.append(taxid_key)
 			
@@ -245,6 +334,8 @@ def tie_break(taxid_list):
 	return [assigned_hit, recheck]
 
 
+# wrapper for a kraken script that converts tab seperated taxid\tcount file and writes a 
+# Pavian output file for it. Requires a copy of ncbi's taxonomy database and some blank files
 def new_write_kraken(basename, final_counts_map, num_unassigned):
 	print('Preparing output for ' + basename)
 	# we write a file in the form taxid\tcount 
@@ -262,46 +353,50 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 	l.close()
 	
 	# kraken-report creates a file that Pavian likes - we name the file base_final_report.tsv
-	kraken_report_cmd = KRAKEN_PATH + ' --db ' + KRAKEN_DB_PATH + ' --taxon-counts ' + basename + '_temp_kraken.tsv > ' + basename + '_final_report.tsv'
+	kraken_report_cmd = KRAKEN_PATH + ' --db ' + KRAKEN_DB_PATH + ' --taxon-counts ' + basename + \
+		'_temp_kraken.tsv > ' + basename + '_final_report.tsv'
 	subprocess.call(kraken_report_cmd, shell=True)
-
-
-
 	
 if __name__ == '__main__':
+	
 	parse_ini('CLOMP.ini')
 	
 	subprocess.call('gunzip *.zip',shell=True)
+	if PAIRED_END:
+		input_list = glob.glob('*' + R1 + '*' + INPUT_SUFFIX)
+	else:
+		input_list = glob.glob('*' + INPUT_SUFFIX)
 	
 	if HOST_FILTER_FIRST:
-		host_filter(INPUT_SUFFIX)
-		trim(BWT_SUFFIX)
-		snap_suffix = TRIM_SUFFIX
+		hf_list = host_filter(input_list)
+		trim_list = trim(hf_list)
+		to_snap_list = trim_list
 	else:
-		trim(INPUT_SUFFIX)
-		host_filter(TRIM_SUFFIX)
-		snap_suffix = BWT_SUFFIX
-	snap(snap_suffix)
+		trim_list = trim(input_list)
+		hf_list = host_filter(trim_list)
+		to_snap_list = hf_list 
 		
-	file_list = glob.glob('*.sam')
+	sam_list = snap(to_snap_list)
+		
+	#file_list = glob.glob('*.sam')
 	base_col = set()
 	main_start_time = timeit.default_timer()
 	
 	
-	for item in file_list:
+	for item in sam_list:
 		base_col.add(item.split(BASE_DELIMITER)[0])
 	
 	for file_base in base_col:
 		base_start_time = timeit.default_timer()
-		reads_to_taxids_map = {}
+		read_to_taxids_map = {}
 		reads_seq_map = {}
 		
 		for sam_file in glob.glob(file_base + '*.sam'):
 			file_start_time = timeit.default_timer()
-			print('Reading in ' + file_name)
+			print('Reading in ' + sam_file)
 			
 			line_count = 0
-			for line in open(file_name):
+			for line in open(sam_file):
 				line_count += 1
 				if line_count > 3:
 					line_list = line.split('\t')
@@ -312,7 +407,8 @@ if __name__ == '__main__':
 						# higher edit distance than anything else makes sure this gets parsed out 
 						current_read_taxid = [snap_assignment_of_current_read,100]
 					else:
-						current_read_taxid = [snap_assignment_of_current_read.split('#')[-1],int(line_list[12].split(':')[-1])]
+						current_read_taxid = [snap_assignment_of_current_read.split('#')[-1],
+							int(line_list[12].split(':')[-1])]
 					
 					if current_read in read_to_taxids_map:
 						read_to_taxids_map[current_read].append(current_read_taxid)
@@ -324,7 +420,7 @@ if __name__ == '__main__':
 						reads_seq_map[current_read] = sequence_of_current_read
 	
 			file_runtime = str(timeit.default_timer() - file_start_time)
-			print('Reading in file ' + file_name + ' took ' + file_runtime)
+			print('Reading in file ' + sam_file + ' took ' + file_runtime)
 	
 		per_base_runtime = str(timeit.default_timer() - base_start_time)
 		print(file_base + ' took ' + per_base_runtime + ' in total to read')
@@ -382,13 +478,4 @@ if __name__ == '__main__':
 		print('Tie breaking ' + file_base + ' took ' + tie_break_time)
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
 	
-	
-	
-	
-	
-	
-	
-	
-		
-		
 		
