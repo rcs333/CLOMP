@@ -246,7 +246,7 @@ def snap(to_snap_list):
 		added = False 
 		count +=  1
 		
-		# Call SNAP once to load database once
+		# Build SNAP command.  It will be long and comma-separated in order to load each database only once
 		snap_cmd = SNAP_ALIGNER_LOCTION + ' '
 		# if you comma separate commands all linking the same database SNAP will load the database
 		# once which DRASTICALLY speeds up the whole process
@@ -257,8 +257,10 @@ def snap(to_snap_list):
 				print('Aligning ' + base + ' to ' + db)
 			
 				if PAIRED_END:
+					#this command will crash since there is no $suffix variable
 					r1 = base + R1 + suffix
 					r2 = base + R2 + suffix 
+					#SNAP will perform the alignment of paired-end reads together, adding to comma-separated SNAP command.
 					snap_cmd += ' paired ' + db + ' ' + r1 + ' ' + r2 + ' -o ' + base + '_' + str(count) + \
 						'.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
 				else:
@@ -267,6 +269,7 @@ def snap(to_snap_list):
 			done_snap_list.add(base + '_' + str(count) + '.sam')
 		# only call snap if we've found at least one file without output
 		if added:
+			#Execute SNAP command built from above.
 			subprocess.call(snap_cmd,shell=True)
 		
 	return done_snap_list  
@@ -421,34 +424,42 @@ if __name__ == '__main__':
 	base_col = set()
 	main_start_time = timeit.default_timer()
 	
-	
+	#Create a list of all of the sample names for which there is a SAM file.
 	for item in sam_list:
 		base_col.add(item.split(BASE_DELIMITER)[0])
-	
+	#For every sample in the folder, go through every SAM file.
 	for file_base in base_col:
 		base_start_time = timeit.default_timer()
 		read_to_taxids_map = {}
 		reads_seq_map = {}
-		
+		#For every SAM file for a given sample, read in the SAM files.
 		for sam_file in glob.glob(file_base + '*.sam'):
 			file_start_time = timeit.default_timer()
 			print('Reading in ' + sam_file)
 			
+			#For every line in the SAM file
 			line_count = 0
 			for line in open(sam_file):
 				line_count += 1
+				#Skip the first three lines, which are header
 				if line_count > 3:
+					#For each read, pull the SAM information for that read.
 					line_list = line.split('\t')
 					current_read = line_list[0]
 					snap_assignment_of_current_read = line_list[2]
 					sequence_of_current_read = line_list[9]
+					
+					#If read is unassigned, call it unassigned and throw it out.  Unassigned reads do not have an edit distance, assign it 100.
 					if snap_assignment_of_current_read == '*':
 						# higher edit distance than anything else makes sure this gets parsed out 
 						current_read_taxid = [snap_assignment_of_current_read,100]
 					else:
+						#Pull the taxid and the edit distance from each line.
 						current_read_taxid = [snap_assignment_of_current_read.split('#')[-1],
 							int(line_list[12].split(':')[-1])]
-					
+					#Create map for each sample.
+					#The key in each map is the read ID and the values are lists.
+					#For every read, append a list of taxid and edit distance from each SAM file.
 					if current_read in read_to_taxids_map:
 						read_to_taxids_map[current_read].append(current_read_taxid)
 					else: 
@@ -465,7 +476,8 @@ if __name__ == '__main__':
 		print(file_base + ' took ' + per_base_runtime + ' in total to read')
 		final_assignment_counts = {}
 		
-	
+		#Now we've read all the reads for all the SAM files for one sample.  We are still within the sample For loop here.
+		#We have all the reads with all the taxids and edit distances that have been assigned.
 		print('Breaking ties for ' + file_base)
 		tie_break_start = timeit.default_timer()
 		# now we're done with the loop and we have a map with reads to list of taxids assigned to them
@@ -476,18 +488,21 @@ if __name__ == '__main__':
 		
 		
 		for read_key in read_to_taxids_map.keys():
-			# assign one taxid to read 
+			# Now we need to assign only one taxid to each read, which means we need to run the tie-breaking function. 
 			loaded_read = reads_seq_map[read_key]
+			
+			#Create a results list which is a taxid and a boolean, which answers whether I should re-BLAST this or not.
 			r_list = tie_break(read_to_taxids_map[read_key])
 			tax_assignment = r_list[0]
-	
+			
+			#If the read is unassigned, write it to the unassigned file.
 			if tax_assignment == '*':
 				e.write('>' + read_key + '\n' + loaded_read + '\n')
 				unass_count += 1
-			# otherwise write it out to the read by read assignment file 
+			# otherwise write it out to the read-by-read assignment file 
 			else:
 				g.write(read_key + '\t' + str(tax_assignment) + '\t' + loaded_read + '\n')
-				# create a mapping of taxid -> unique reads 
+				# create a mapping of taxid -> unique reads.  Unique reads are defined as reads without the exact same sequence.  This can help in debugging.
 				if WRITE_UNIQUES:
 					if str(tax_assignment) in taxid_to_read_set:
 						taxid_to_read_set[str(tax_assignment)].add(loaded_read,)
@@ -502,6 +517,8 @@ if __name__ == '__main__':
 	
 		g.close()
 		e.close()
+		#For each sample, we make a folder and for every taxid, we create a FASTA file that are named by their taxid.  We lose the read ID in this file.  #nicetohave would be hold the read ID here.
+		#Here we will write a FASTA of unique reads
 		if WRITE_UNIQUES:
 			subprocess.call('mkdir ' + file_base.split('.')[0], shell=True)
 			for id in taxid_to_read_set.keys():
@@ -515,6 +532,8 @@ if __name__ == '__main__':
 			
 		tie_break_time = str(timeit.default_timer() - tie_break_start)
 		print('Tie breaking ' + file_base + ' took ' + tie_break_time)
+		
+		#For each sample, write the Pavian output.
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
 	
 		
