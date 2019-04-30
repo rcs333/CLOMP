@@ -107,6 +107,9 @@ def parse_ini(ini_path):
 			elif var == 'EDIT_DISTANCE_OFFSET':
 				global EDIT_DISTANCE_OFFSET
 				EDIT_DISTANCE_OFFSET = int(val)
+			elif var == 'FILTER_LIST':
+				global FILTER_LIST
+				FILTER_LIST = ast.literal_eval(val)
 			elif var == 'H_STRICT':
 				global H_STRICT
 				H_STRICT = ast.literal_eval(val)
@@ -119,9 +122,15 @@ def parse_ini(ini_path):
 			elif var =='WRITE_UNIQUES':
 				global WRITE_UNIQUES
 				WRITE_UNIQUES = ast.literal_eval(val)
-			elif var == 'BLAST_REMOVE_NONHUMAN_EUKARYOTIC_READS':
-				global BLAST_REMOVE_NONHUMAN_EUKARYOTIC_READS
-				BLAST_REMOVE_NONHUMAN_EUKARYOTIC_READS = ast.literal_eval(val)
+			elif var == 'BLAST_CHECK':
+				global BLAST_CHECK
+				BLAST_CHECK = ast.literal_eval(val)
+			elif var == 'INCLUSION_TAXID':
+				global INCLUSION_TAXID
+				INCLUSION_TAXID = ast.literal_eval(val)
+			elif var == 'EXCLUSION_TAXID':
+				global EXCLUSION_TAXID
+				EXCLUSION_TAXID = ast.literal_eval(val)
 			elif var == 'BUILD_SAMS':
 				global BUILD_SAMS
 				BUILD_SAMS = ast.literal_eval(val)
@@ -133,12 +142,12 @@ def host_filter(to_host_filter_list):
 	# Use a set to prevent duplicates when using paired end reads 
 	done_host_filtering_list = set()
 	
-# Go through every file in the file list that was passed to host_filter and take the unique sample name.
+	# Go through every file in the file list that was passed to host_filter and take the unique sample name.
 	for r1 in to_host_filter_list:
 		base = r1.split(BASE_DELIMITER)[0]
 		
 		# Check if output file does not exist or if overwrite is turned on
-		if not os.path.isfile(base + R1 + BWT_SUFFIX) or OVERWRITE:
+		if not os.path.isfile(base + BASE_DELIMITER + R1 + BWT_SUFFIX) or OVERWRITE:
 			if PAIRED_END:
 				#Build name of the R2 file by taking sample name from R1 and putting in R2 where the R1 was.
 				r2 = r1.split(R1)[0] + R2 + r1.split(R1)[1]
@@ -170,7 +179,7 @@ def host_filter(to_host_filter_list):
 			#Write the output FASTQ file that has been host filtered.
 			r1_cmd = 'samtools view -@ ' + THREADS + ' -F 0x40 ' + base + '_mappedBam | ' \
 				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
-				base + R1 + BWT_SUFFIX
+				base + BASE_DELIMITER + R1 + BWT_SUFFIX
 			subprocess.call(r1_cmd,shell=True)
 			
 			#Add the output file to our "done" file list.
@@ -180,7 +189,7 @@ def host_filter(to_host_filter_list):
 			if PAIRED_END:
 				r2_cmd = 'samtools view -@ ' + THREADS + ' -f 0x40 ' + base + '_mappedBam | ' \
 				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
-				base + R1 + BWT_SUFFIX
+				base + BASE_DELIMITER + R2 + BWT_SUFFIX
 				subprocess.call(r2_cmd, shell=True)
 			
 			if BWT_CLEAN:
@@ -193,7 +202,7 @@ def host_filter(to_host_filter_list):
 				if PAIRED_END:
 					subprocess.call('rm ' + r2, shell=True)
 		else:
-			done_host_filtering_list.add(base + R1 + BWT_SUFFIX)
+			done_host_filtering_list.add(base + BASE_DELIMITER + R1 + BWT_SUFFIX)
 			
 	return done_host_filtering_list
 				
@@ -207,21 +216,21 @@ def trim(to_trim_list):
 	
 	for file_name in to_trim_list:
 		base = file_name.split(BASE_DELIMITER)[0]
-		if not os.path.isfile(base + R1 + TRIM_SUFFIX) or OVERWRITE:
+		if not os.path.isfile(base + BASE_DELIMITER + R1 + TRIM_SUFFIX) or OVERWRITE:
 			if PAIRED_END:
 				r1 = file_name
-				r2 = glob.glob(base + '*' + R2 + '*.fastq')[0]
+				r2 = file_name.split(R1)[0] + R2 + file_name.split(R2)[1]
 				trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' PE -threads ' + THREADS + ' ' + r1 + ' ' + \
-					r2 + ' ' + base + R1 + TRIM_SUFFIX + ' ' + base + R2 + TRIM_SUFFIX + ' ' + SEQUENCER + \
+					r2 + ' ' + base + BASE_DELIMITER + R1 + TRIM_SUFFIX + ' ' + base + BASE_DELIMITER + R2 + TRIM_SUFFIX + ' ' + SEQUENCER + \
 					TRIMMOMATIC_ADAPTER_PATH + TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
 				
 			else:
 				trim_cmd = 'java -jar ' + TRIMMOMATIC_JAR_PATH + ' SE -threads ' + THREADS + ' ' + file_name + \
-					' ' + base + R1 + TRIM_SUFFIX +  ' ' + SEQUENCER + TRIMMOMATIC_ADAPTER_PATH + \
+					' ' + base + BASE_DELIMITER + R1 + TRIM_SUFFIX +  ' ' + SEQUENCER + TRIMMOMATIC_ADAPTER_PATH + \
 					TRIMMOMATIC_OPTIONS + ' > ' + base + '.trim.log'
 				
 			subprocess.call(trim_cmd,shell=True)
-			done_trim_list.add(base+R1+TRIM_SUFFIX)
+			done_trim_list.add(base + BASE_DELIMITER + R1 + TRIM_SUFFIX)
 			if not SAVE_MIDDLE_FILES:
 				if PAIRED_END:
 					subprocess.call('rm ' + r1, shell=True)
@@ -229,7 +238,7 @@ def trim(to_trim_list):
 				else:
 					subprocess.call('rm ' + file_name)
 		else:
-			done_trim_list.add(base+R1+TRIM_SUFFIX)
+			done_trim_list.add(base + BASE_DELIMITER + R1 + TRIM_SUFFIX)
 			
 	return done_trim_list
 
@@ -247,37 +256,36 @@ def snap(to_snap_list):
 		count +=  1
 		
 		# Build SNAP command.  It will be long and comma-separated in order to load each database only once
-		snap_cmd = SNAP_ALIGNER_LOCTION + ' '
+		snap_cmd = SNAP_ALIGNER_LOCTION + ' ' 
 		# if you comma separate commands all linking the same database SNAP will load the database
 		# once which DRASTICALLY speeds up the whole process
 		for file_name in to_snap_list:
 			base = file_name.split(BASE_DELIMITER)[0]
-			if not os.path.isfile(base + '_' + str(count) + '.sam') or OVERWRITE:
+			if not os.path.isfile(base + BASE_DELIMITER + str(count) + '.sam') or OVERWRITE:
 				added = True
 				print('Aligning ' + base + ' to ' + db)
 			
 				if PAIRED_END:
-					#this command will crash since there is no $suffix variable
-					r1 = base + R1 + suffix
-					r2 = base + R2 + suffix 
+					r1 = file_name
+					r2 = file_name.split(R1)[0] + R2 + file_name.split(R2)[1] 
 					#SNAP will perform the alignment of paired-end reads together, adding to comma-separated SNAP command.
-					snap_cmd += ' paired ' + db + ' ' + r1 + ' ' + r2 + ' -o ' + base + '_' + str(count) + \
+					snap_cmd += ' paired ' + db + ' ' + r1 + ' ' + r2 + ' -o ' + base + BASE_DELIMITER + str(count) + \
 						'.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
 				else:
-					snap_cmd += ' single ' + db + ' ' + file_name + ' -o ' + base + '_' + str(count) + \
+					snap_cmd += ' single ' + db + ' ' + file_name + ' -o ' + base + BASE_DELIMITER + str(count) + \
 						'.sam -t ' + THREADS + ' ' + SNAP_OPTIONS + ' , '
-			done_snap_list.add(base + '_' + str(count) + '.sam')
+			done_snap_list.add(base + BASE_DELIMITER + str(count) + '.sam')
 		# only call snap if we've found at least one file without output
 		if added:
 			#Execute SNAP command built from above.
 			subprocess.call(snap_cmd,shell=True)
 		
 	return done_snap_list  
-	
 
-# takes a list of taxid,edit_distances in the form [[taxid,edit_distance],[taxid,edit_distance],..
+
+# The tie-breaking function takes a list of taxid,edit_distances in the form [[taxid,edit_distance],[taxid,edit_distance],..
 # references the global variable LOGIC to control the underlying tiebreaking code, breaks ties and 
-# returns a single taxid as a string
+# returns a single taxid as a string and a Boolean value (as to whether the read needs to re-BLASTEd against host).
 def tie_break(taxid_list):
 	score_list = [] 
 	actual_taxid_list = []
@@ -289,26 +297,22 @@ def tie_break(taxid_list):
 	# number greater than the snap option -d to hold all hits
 	best_edit_distance = min(score_list) + EDIT_DISTANCE_OFFSET
 	
-	# filter off the above criteria 
+	# Keep taxids that have an edit distance less than the acceptable edit distance defined above 
 	for id in taxid_list:
 		if id[1] <= best_edit_distance:
 			actual_taxid_list.append(id[0])
-	
-	# controls if use any alignment to the human genome as grounds for classification as human source
-	if H_STRICT:
-		if H_TAXID in actual_taxid_list:
-			return [H_TAXID,False]
-			
+	#No longer holding edit distances		
 	taxid_list = actual_taxid_list
 	lineage_list = []
 	
 	for id in taxid_list:
-		# Not all taixds have valid lineages 
+		# Not all taxids have valid lineages 
 		try:
+			#Not every taxid has a valid NCBI lineage, so this statement has to be encased in a try statement.
 			lineage = ncbi.get_lineage(id)
-			# filters out lineages that contain 'other sequences' or 'artificial 
-			#sequences' or 'enviornmental samples' 
-			if (12908 in lineage) or (28384 in lineage) or (48479 in lineage):
+			# filters out lineages that contain taxids in the FILTER_LIST variable
+			# commonly, this is 'other sequences', 'artificial sequences' or 'environmental samples' 
+			if any(x in FILTER_LIST for x in lineage):
 				lineage = []
 		except:
 			lineage = []
@@ -319,6 +323,13 @@ def tie_break(taxid_list):
 	if not lineage_list:
 		return ['*',False]
 	
+	# controls if use any alignment to the human genome as grounds for classification as human source
+	if H_STRICT:
+		# check if H_TAXID ever shows up in 
+		if any(int(H_TAXID) in sl for sl in lineage_list):
+			return [H_TAXID,False]
+			
+
 	# count all taxids in all lineages 
 	taxid_to_count_map = {}
 	for each_lineage in lineage_list:
@@ -328,7 +339,7 @@ def tie_break(taxid_list):
 			else:
 				taxid_to_count_map[each_taxid] = 1
 	
-	
+	#Set the threshold according to the pre-specified LOGIC in the initialization file
 	num_assignments = len(lineage_list)
 	if LOGIC == 'strict':
 		threshold = num_assignments
@@ -339,7 +350,8 @@ def tie_break(taxid_list):
 	else:
 		print('invalid logic threshold: defaulting to strict')
 		threshold = num_assignments
-		
+	
+	#Now we will find all the taxids that meet threshold/LOGIC specified above.
 	surviving_taxids = []
 	for taxid_key in taxid_to_count_map:
 		# main filtering - everything that passes this step gets a list intersection and the 
@@ -354,19 +366,26 @@ def tie_break(taxid_list):
 
 	for the_value in surviving_taxids:
 		d[the_value] = len(ncbi.get_lineage(the_value))
-	
+	#Find the remaining taxid with the longest lineage.
+	#The longest lineage is defined as the longest list.  #nicetohave: this is not pulling the taxonomic rank at any point.
 	assigned_hit = max(d.iteritems(), key=operator.itemgetter(1))[0]
 	recheck = False 
-	if BLAST_REMOVE_NONHUMAN_EUKARYOTIC_READS:
+	
+	#Assign a Boolean value for each read as to whether it needs to be searched against a custom BLAST database
+	#Here, we are just assigning whether it needs to be searched or not.  The custom BLAST database would need to be made separately.
+	#All reads downstream of INCLUSION_TAXID and but not downstream of EXCLUSION_TAXID will be assigned a True value.
+	if BLAST_CHECK:
 		assigned_lineage = ncbi.get_lineage(assigned_hit)
-		if 2759 in assigned_lineage and 9604 not in assigned_lineage:
+		if INCLUSION_TAXID in assigned_lineage and EXCLUSION_TAXID not in assigned_lineage:
 			recheck = True
 	
 	return [assigned_hit, recheck]
 
+#Every read has a taxid assignment or is unassigned at this point.
 
 # wrapper for a kraken script that converts tab seperated taxid\tcount file and writes a 
 # Pavian output file for it. Requires a copy of ncbi's taxonomy database and some blank files
+# This is a map of assigned taxids to number of occurrences as well as the total number of unassigned reads.
 def new_write_kraken(basename, final_counts_map, num_unassigned):
 	print('Preparing output for ' + basename)
 	# we write a file in the form taxid\tcount 
@@ -405,6 +424,7 @@ if __name__ == '__main__':
 	if PAIRED_END:
 		input_list = glob.glob('*' + R1 + '*' + INPUT_SUFFIX)
 	else:
+		R1 = ''
 		input_list = glob.glob('*' + INPUT_SUFFIX)
 	
 	#Each of these functions takes a file list as input and returns a file list as output.
