@@ -107,6 +107,9 @@ def parse_ini(ini_path):
 			elif var == 'H_STRICT':
 				global H_STRICT
 				H_STRICT = ast.literal_eval(val)
+			elif var == 'H_TAXID':
+				global H_TAXID
+				H_TAXID = val
 			elif var == 'LOGIC':
 				global LOGIC
 				LOGIC = val
@@ -265,8 +268,8 @@ def tie_break(taxid_list):
 	
 	# controls if use any alignment to the human genome as grounds for classification as human source
 	if H_STRICT:
-		if '9606' in actual_taxid_list:
-			return ['9606',False]
+		if H_TAXID in actual_taxid_list:
+			return [H_TAXID,False]
 			
 	taxid_list = actual_taxid_list
 	lineage_list = []
