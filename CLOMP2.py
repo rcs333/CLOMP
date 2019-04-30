@@ -237,10 +237,16 @@ def trim(to_trim_list):
 # writes output .sam files to disk and returns a set containing all outputs 
 def snap(to_snap_list):
 	done_snap_list = set()
+	
+	# Incremental count for each database that is passed in the initialization file.  This count is appended to the output file.
 	count = -1 
+	#Loop through the databases from the initialization file.  The goal is to perform each database load into RAM only once.
 	for db in DB_LIST:
+		#The added variable holds whether a given database has been aligned to for a set of reads.
 		added = False 
 		count +=  1
+		
+		# Call SNAP once to load database once
 		snap_cmd = SNAP_ALIGNER_LOCTION + ' '
 		# if you comma separate commands all linking the same database SNAP will load the database
 		# once which DRASTICALLY speeds up the whole process
