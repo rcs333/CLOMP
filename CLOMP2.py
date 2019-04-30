@@ -134,6 +134,18 @@ def parse_ini(ini_path):
 			elif var == 'BUILD_SAMS':
 				global BUILD_SAMS
 				BUILD_SAMS = ast.literal_eval(val)
+			elif var == 'MIN_READ_CUTOFF':
+				global MIN_READ_CUTOFF
+				MIN_READ_CUTOFF = ast.literal_eval(val)
+			elif var == 'ASSEMBLY_NODE_OFFSET':
+				global ASSEMBLY_NODE_OFFSET
+				ASSEMBLY_NODE_OFFSET = ast.literal_eval(val)
+			elif var == 'ENTREZ_EMAIL':
+				global ENTREZ_EMAIL
+				ENTREZ_EMAIL = val
+			elif var == 'SAM_NO_BUILD_LIST':
+				global SAM_NO_BUILD_LIST
+				SAM_NO_BUILD_LIST = ast.literal_eval(val)
 				
 			
 # Takes a list of files to host filter and if output files don't exist, host filters and writes output
@@ -407,6 +419,76 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 		'_temp_kraken.tsv > ' + basename + '_final_report.tsv'
 	subprocess.call(kraken_report_cmd, shell=True)
 	
+
+def build_sams(input_list):
+	from Bio import Entrez 
+	Entrez.email = ENTREZ_EMAIL
+	for file_name in glob.glob('*report.tsv'):
+		base = file_name.split(BASE_DELIMITER)[0]
+		taxid_to_assemble = []
+		
+		for line in open(file_name):
+			line_list = line.split('\t')
+			if line_list[3] == 'S' and int(line_lsit[2]) >= MIN_READ_CUTOFF:
+				lineage = ncbi.get_lineage(line_list[4])
+				ny(x in FILTER_LIST for x in lineage):
+				if not any(x in SAM_NO_BUILD_LIST for x in lineage):
+					taxid_to_assemble.append(line_list[4])
+					
+		for taxid in taxid_to_assemble:
+			taxid_search_list = [str(taxid)]
+			taxid_search_list = taxid_search_list + ncbi.get_descendant_taxa(taxid, intermediate_nodes=True)
+			list_of_reads_to_pull = []
+			for a_line in open(base + '_assignments.txt'):
+				a_line_list = a_line.split('\t')
+				if a_line_list[1]  in taxid_search_list:
+					list_of_reads_to_pull.append(a_line_list[0])
+			acc_num_list = []
+			for s_file in glob.glob(base + * + '.sam'):
+				for line in open(s_file):
+					sam_line_list = sam_line.split('\t')
+						if sam_line_list[0] in list_of_reads_to_pull and 'complete_genome' in sam_line_list[2]:
+							acc_num_list.append(sam_line_list[2].split('.')[0])
+			if len(acc_num_list) == 0:
+				print('No complete genome reference found, not assembling taxid: ' + str(taxid))
+				break
+				
+			most_common_acc_num = max(set(acc_num_list), key = acc_num_list.count)
+			
+			taxid_lineage = ncbi.get_lineage(taxid)
+			taxid_to_pull = taxid_lineage[ASSEMBLY_NODE_OFFSET]
+			taxid_search_list = taxid_to_pull + ncbi.get_dsecendant_taxa(taxid_to_pull, intermediate_nodes = True)
+			
+			header_list = []
+			seq_list = []
+			g = open(base + '_' + taxid + '.fasta', 'w')
+			for line in open(base + '_assignments.txt'):
+				line_list = line.split('\t')
+				if int(line_list[1]) in taxid_search_list:
+					g.write('>' + line_list[0] + '\n')
+					g.write(line_list[2])
+			g.close()
+			
+			print('Searching NCBI for Accession number:' + most_common_acc_num + ' for taxid ' + str(taxid))
+			record = Entrez.read(Entrez.esearch(db='nucleotide', term=most_common_acc_num))
+			try:
+				h2 = Entrez.efetch(db='nucleotide', id=record['IdList'][0], rettype='fasta', retmode='text')
+			except:
+				print(str(taxid) + ' did not return hits - not assembling')
+				break
+			
+			ref_fasta = base + '_' + str(taxid) + '_ref.fasta'
+			ref_db = base + '_' + str(taxid) + '_bwt_db'
+			g = open(ref_fasta, 'w')
+			g.write(h2.read())
+			g.close()
+			print('building bowtie2 index') 
+			subprocess.call('bowtie2-build ' + ref_fasta + ' ' + ref_db + ' > /dev/null 2>&1 ', shell=True)
+			print('Done with index build. Aligning...')
+			subprocess.call('bowtie2 -x ' + ref_db + ' -@ ' + THREADS + ' -f -U ' + base + '_' + str(taxid) + '.fasta --no-unal > ' + base + '_' + str(taxid) + '.sam', shell=True)
+			subprocess.call('rm ' + ref_db, shell=True)
+					
+				
 if __name__ == '__main__':
 	
 	# CLOMP assumes the FASTQ sequence files for a given run are in their own folder along with the initialization file below.
@@ -555,5 +637,6 @@ if __name__ == '__main__':
 		
 		#For each sample, write the Pavian output.
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
-	
+	if BUILD_SAMS:
+		build_sams(sam_list)
 		
