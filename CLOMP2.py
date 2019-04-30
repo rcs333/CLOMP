@@ -26,12 +26,15 @@ ncbi = NCBITaxa()
 
 # takes a path to the ini file and reads in all the variables, all variables
 # are globals and assumed to exist and be valid 
+# If the variable is assigned to <blank>, we are not sure what would happen.
+# It would be good to have a validity checker for each of these variables.  #nicetohave
 def parse_ini(ini_path):
 	for line in open(ini_path):
 		if line[0] and line[0] != '#' and '=' in line:
 			line_list = line.split('=')
 			var = line_list[0].strip()
 			val = line_list[1].strip()
+			#Of note, all of the paired-end functionality is untested.  Usually only R1 is used in taxonomical analysis.
 			if var == 'PAIRED_END':
 				global PAIRED_END
 				PAIRED_END = ast.literal_eval(val)
@@ -130,34 +133,50 @@ def host_filter(to_host_filter_list):
 	# Use a set to prevent duplicates when using paired end reads 
 	done_host_filtering_list = set()
 	
+# Go through every file in the file list that was passed to host_filter and take the unique sample name.
 	for r1 in to_host_filter_list:
 		base = r1.split(BASE_DELIMITER)[0]
+		
+		# Check if output file does not exist or if overwrite is turned on
 		if not os.path.isfile(base + R1 + BWT_SUFFIX) or OVERWRITE:
 			if PAIRED_END:
+				#Build name of the R2 file by taking sample name from R1 and putting in R2 where the R1 was.
 				r2 = r1.split(R1)[0] + R2 + r1.split(R1)[1]
+				
+				#Create alignment command for paired-end reads for host filtering with bowtie2.
 				align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + \
 					BWT_DB_LOCATION + ' -q -1 ' + r1 + + ' -2 ' + r2 + ' -S ' + base + \
 					'_mappedSam ' + ' 2>&1 | tee -a ' + base + '.log'
 			else:
+				#If not paired-end, then create alignment command for single-end reads for host filtering with bowtie2.
 				align_cmd = 'bowtie2 ' + BWT_OPTIONS + ' --threads ' + THREADS + ' -x ' + \
 				BWT_DB_LOCATION + ' -q -U ' + r1 + ' -S ' + base + '_mappedSam' + ' 2>&1 | tee -a ' + \
 				base + '.log'
+			
+			#Call the bowtie2 command from above.
 			subprocess.call(align_cmd, shell=True)
-		
+			
+			#Convert from sam to bam.
 			sort_cmd = 'samtools view -Sb -@ ' + THREADS + ' ' + base + '_mappedSam > ' + base + '_mappedBam' 
 			subprocess.call(sort_cmd, shell=True)
-		
+			#Unclear if this command is needed.
 			sort_cmd2 = 'samtools sort -@ ' + THREADS + ' ' + base + '_mappedBam ' + base +  '_sorted'
 			subprocess.call(sort_cmd2, shell=True)
-		
+			#Unclear if this command is needed.
 			index_cmd = 'samtools index ' + base + '_sorted.bam'
 			subprocess.call(index_cmd, shell=True)
-		
+			
+			
+			#Write the output FASTQ file that has been host filtered.
 			r1_cmd = 'samtools view -@ ' + THREADS + ' -F 0x40 ' + base + '_mappedBam | ' \
 				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
 				base + R1 + BWT_SUFFIX
 			subprocess.call(r1_cmd,shell=True)
+			
+			#Add the output file to our "done" file list.
 			done_host_filtering_list.add(base + R1 + BWT_SUFFIX)
+			
+			#Perform host filtering on R2 as needed and write output FASTQ that has been host filtered.
 			if PAIRED_END:
 				r2_cmd = 'samtools view -@ ' + THREADS + ' -f 0x40 ' + base + '_mappedBam | ' \
 				'awk \'{if($3 == \"*\") print \"@\" $1 \"\\n\" $10 \"\\n\" \"+\" $1 \"\\n\" $11}\' > ' + \
@@ -362,13 +381,24 @@ def new_write_kraken(basename, final_counts_map, num_unassigned):
 	
 if __name__ == '__main__':
 	
+	# CLOMP assumes the FASTQ sequence files for a given run are in their own folder along with the initialization file below.
+	
 	parse_ini('CLOMP.ini')
 	
-	subprocess.call('gunzip *.zip',shell=True)
+	#Assumes that the files coming off the sequencer will be gzipped, but okay if not.  Currently does not handle other compressions.
+	subprocess.call('gunzip *.gz',shell=True)
+	
+	# We assume that if you are submitting paired end reads every R1 has an R2
+	# Core data flow is through lists of files.
+	# here we generate the input file list using the provided variables and wildcard expansion (glob is basically like unix ls)
+	# Of note, R1 here is a variable that assigns how we identify your R1 reads.
+	# We identify the list of the samples to be run off the R1 readfile name.
 	if PAIRED_END:
 		input_list = glob.glob('*' + R1 + '*' + INPUT_SUFFIX)
 	else:
 		input_list = glob.glob('*' + INPUT_SUFFIX)
+	
+	#Each of these functions takes a file list as input and returns a file list as output.
 	
 	if HOST_FILTER_FIRST:
 		hf_list = host_filter(input_list)
