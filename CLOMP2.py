@@ -486,8 +486,7 @@ def build_sams(input_list):
 			print('Done with index build. Aligning...')
 			subprocess.call('bowtie2 -x ' + ref_db + ' -@ ' + THREADS + ' -f -U ' + base + '_' + str(taxid) + '.fasta --no-unal > ' + base + '_' + str(taxid) + '.sam', shell=True)
 			subprocess.call('rm ' + ref_db, shell=True)
-
-			
+				
 				
 if __name__ == '__main__':
 	
@@ -593,6 +592,9 @@ if __name__ == '__main__':
 		unass_count = 0
 		taxid_to_read_set = {}
 		
+		if BLAST_CHECK:
+			z = open(file_base + '_recheck.txt', 'w')
+		
 		
 		for read_key in read_to_taxids_map.keys():
 			# Now we need to assign only one taxid to each read, which means we need to run the tie-breaking function. 
@@ -601,6 +603,12 @@ if __name__ == '__main__':
 			#Create a results list which is a taxid and a boolean, which answers whether I should re-BLAST this or not.
 			r_list = tie_break(read_to_taxids_map[read_key])
 			tax_assignment = r_list[0]
+			
+			# This will only ever be true if BLAST_CHECK is set to True
+			if r_list[1]:
+				z.write('>' + read_key + '\n' + loaded_read + '\n')
+				
+				
 			
 			#If the read is unassigned, write it to the unassigned file.
 			if tax_assignment == '*':
@@ -624,6 +632,9 @@ if __name__ == '__main__':
 	
 		g.close()
 		e.close()
+		if BLAST_CHECK:
+			z.close()
+	
 		#For each sample, we make a folder and for every taxid, we create a FASTA file that are named by their taxid.  We lose the read ID in this file.  #nicetohave would be hold the read ID here.
 		#Here we will write a FASTA of unique reads
 		if WRITE_UNIQUES:
@@ -644,3 +655,4 @@ if __name__ == '__main__':
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
 	if BUILD_SAMS:
 		build_sams(sam_list)
+	
