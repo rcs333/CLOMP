@@ -44,9 +44,9 @@ def parse_ini(ini_path):
 			elif var == 'R2':
 				global R2
 				R2 = val
-			elif var == 'SAVE_MIDDLE_FILES':
-				global SAVE_MIDDLE_FILES
-				SAVE_MIDDLE_FILES = ast.literal_eval(val)
+			elif var == 'SAVE_MIDDLE_AND_INPUT_FILES':
+				global SAVE_MIDDLE_AND_INPUT_FILES
+				SAVE_MIDDLE_AND_INPUT_FILES = ast.literal_eval(val)
 			elif var == 'THREADS': 
 				global THREADS
 				THREADS = val
@@ -209,7 +209,7 @@ def host_filter(to_host_filter_list):
 				subprocess.call('rm ' + base + '_mappedBam', shell=True)
 				subprocess.call('rm ' + base + '_sorted.bam', shell=True)
 				subprocess.call('rm ' + base + '_sorted.bam.bai', shell=True)
-			if not SAVE_MIDDLE_FILES:
+			if not SAVE_MIDDLE_AND_INPUT_FILES:
 				subprocess.call('rm ' + r1, shell=True)
 				if PAIRED_END:
 					subprocess.call('rm ' + r2, shell=True)
@@ -243,7 +243,7 @@ def trim(to_trim_list):
 				
 			subprocess.call(trim_cmd,shell=True)
 			done_trim_list.add(base + BASE_DELIMITER + R1 + TRIM_SUFFIX)
-			if not SAVE_MIDDLE_FILES:
+			if not SAVE_MIDDLE_AND_INPUT_FILES:
 				if PAIRED_END:
 					subprocess.call('rm ' + r1, shell=True)
 					subprocess.call('rm ' + r2, shell=True)
@@ -431,7 +431,6 @@ def build_sams(input_list):
 			line_list = line.split('\t')
 			if line_list[3] == 'S' and int(line_lsit[2]) >= MIN_READ_CUTOFF:
 				lineage = ncbi.get_lineage(line_list[4])
-				ny(x in FILTER_LIST for x in lineage):
 				if not any(x in SAM_NO_BUILD_LIST for x in lineage):
 					taxid_to_assemble.append(line_list[4])
 					
@@ -444,11 +443,11 @@ def build_sams(input_list):
 				if a_line_list[1]  in taxid_search_list:
 					list_of_reads_to_pull.append(a_line_list[0])
 			acc_num_list = []
-			for s_file in glob.glob(base + * + '.sam'):
+			for s_file in glob.glob(base + '*' + '.sam'):
 				for line in open(s_file):
 					sam_line_list = sam_line.split('\t')
-						if sam_line_list[0] in list_of_reads_to_pull and 'complete_genome' in sam_line_list[2]:
-							acc_num_list.append(sam_line_list[2].split('.')[0])
+					if sam_line_list[0] in list_of_reads_to_pull and 'complete_genome' in sam_line_list[2]:
+						acc_num_list.append(sam_line_list[2].split('.')[0])
 			if len(acc_num_list) == 0:
 				print('No complete genome reference found, not assembling taxid: ' + str(taxid))
 				break
@@ -487,13 +486,19 @@ def build_sams(input_list):
 			print('Done with index build. Aligning...')
 			subprocess.call('bowtie2 -x ' + ref_db + ' -@ ' + THREADS + ' -f -U ' + base + '_' + str(taxid) + '.fasta --no-unal > ' + base + '_' + str(taxid) + '.sam', shell=True)
 			subprocess.call('rm ' + ref_db, shell=True)
-					
+
+			
 				
 if __name__ == '__main__':
 	
 	# CLOMP assumes the FASTQ sequence files for a given run are in their own folder along with the initialization file below.
+	parser = argparse.ArgumentParser(description='Clinically Okay Metagenomic Pipeline - run inside a folder with your input files')
+	parser.add_argument('ini_path',help='Path to CLOMP.ini file, this controls almost every aspect of the exection, most defaults are sane but you need to manually set some values before you can run this correctly')
 	
-	parse_ini('CLOMP.ini')
+	args = parser.parse_args()
+	
+	
+	parse_ini(args.ini_path)
 	
 	#Assumes that the files coming off the sequencer will be gzipped, but okay if not.  Currently does not handle other compressions.
 	subprocess.call('gunzip *.gz',shell=True)
@@ -639,4 +644,3 @@ if __name__ == '__main__':
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
 	if BUILD_SAMS:
 		build_sams(sam_list)
-		
