@@ -625,10 +625,10 @@ if __name__ == '__main__':
 						taxid_to_read_set[str(tax_assignment)] = set([loaded_read])
 					
 			
-					if tax_assignment in final_assignment_counts:
-						final_assignment_counts[tax_assignment] += 1
-					else:
-						final_assignment_counts[tax_assignment] = 1
+				if tax_assignment in final_assignment_counts:
+					final_assignment_counts[tax_assignment] += 1
+				else:
+					final_assignment_counts[tax_assignment] = 1
 	
 		g.close()
 		e.close()
