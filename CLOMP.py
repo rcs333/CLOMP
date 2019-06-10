@@ -161,6 +161,12 @@ def parse_ini(ini_path):
 			elif var == 'SAM_NO_BUILD_LIST':
 				global SAM_NO_BUILD_LIST
 				SAM_NO_BUILD_LIST = ast.literal_eval(val)
+			elif var == 'ADD_HOST_FILTERED_TO_REPORT':
+				global ADD_HOST_FILTERED_TO_REPORT
+				ADD_HOST_FILTERED_TO_REPORT = ast.literal_eval(val)
+			elif var == 'HOST_FILTER_TAXID':
+				global HOST_FILTER_TAXID
+				HOST_FILTER_TAXID = int(val)
 				
 			
 # Takes a list of files to host filter and if output files don't exist, host filters and writes output
@@ -764,7 +770,7 @@ if __name__ == '__main__':
 					n.write(line)
 			n.close()
 			for item in redo_taxid_list:
-				final_assignment_counts[read_to_taxids_map[item] += 1
+				final_assignment_counts[read_to_taxids_map[item]] += 1
 				final_assignment_counts[DB_TAXID] += 1
 			
 				
@@ -785,9 +791,22 @@ if __name__ == '__main__':
 			
 		tie_break_time = str(timeit.default_timer() - tie_break_start)
 		print('Tie breaking ' + file_base + ' took ' + tie_break_time)
-		
+
 		#For each sample, write the Pavian output.
 		new_write_kraken(file_base, final_assignment_counts, unass_count)
+		if ADD_HOST_FILTERED_TO_REPORT:
+			line_count = 0
+			for log_line in open(file_base + '.log'):
+				line_count += 1
+				if line_count == 4 or line_count == 5:
+					final_assignment_counts[HOST_FILTER_TAXID] += int(log_line.split()[0])
+				if SECOND_PASS and (line_count == 10 or line_count == 11):
+					final_assignment_counts[HOST_FILTER_TAXID] += int(log_line.split()[0])
+		new_write_kraken(file_base + '_with_host', final_assignment_counts, unass_count)
+
+
+
+
 	if BUILD_SAMS:
 		build_sams(sam_list)
 	
