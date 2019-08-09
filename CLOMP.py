@@ -217,7 +217,7 @@ def host_filter(to_host_filter_list):
 			subprocess.call(r1_cmd,shell=True)
 			
 			#Add the output file to our "done" file list.
-			done_host_filtering_list.add(base + R1 + BWT_SUFFIX)
+			done_host_filtering_list.add(base + BASE_DELIMITER + R1 + BWT_SUFFIX)
 			
 			#Perform host filtering on R2 as needed and write output FASTQ that has been host filtered.
 			if PAIRED_END:
@@ -291,7 +291,7 @@ def host_filter2(to_host_filter_list):
 			subprocess.call(r1_cmd,shell=True)
 			
 			#Add the output file to our "done" file list.
-			done_host_filtering_list.add(base + R1 + BWT_SECOND_SUFFIX)
+			done_host_filtering_list.add(base + BASE_DELIMITER + R1 + BWT_SECOND_SUFFIX)
 			
 			#Perform host filtering on R2 as needed and write output FASTQ that has been host filtered.
 			if PAIRED_END:
