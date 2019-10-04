@@ -663,7 +663,7 @@ if __name__ == '__main__':
 		read_to_taxids_map = {}
 		reads_seq_map = {}
 		#For every SAM file for a given sample, read in the SAM files.
-		for sam_file in glob.glob(file_base + '*.sam'):
+		for sam_file in glob.glob(file_base + BASE_DELIMITER + '*.sam'):
 			file_start_time = timeit.default_timer()
 			print('Reading in ' + sam_file)
 			
