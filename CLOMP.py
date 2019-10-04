@@ -610,7 +610,7 @@ def build_sams(input_list):
 				
 				
 if __name__ == '__main__':
-	
+	print('CLOMP version 1.01') 
 	# CLOMP assumes the FASTQ sequence files for a given run are in their own folder along with the initialization file below.
 	parser = argparse.ArgumentParser(description='Clinically Okay Metagenomic Pipeline - run inside a folder with your input files')
 	parser.add_argument('ini_path',help='Path to CLOMP.ini file, this controls almost every aspect of the exection, most defaults are sane but you need to manually set some values before you can run this correctly')
